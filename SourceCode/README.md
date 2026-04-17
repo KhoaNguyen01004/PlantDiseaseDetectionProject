@@ -30,16 +30,36 @@ Edit `configs/config.yaml` for hparams.
 - `plant_model.onnx`
 - `plant_model_tflite/float32/plant_model.tflite` etc.
 
-## Structure
+## Detailed Structure
 ```
-├── src/          # Code
-├── configs/      # Configs
-├── data/         # Datasets, labels
-├── models/       # Checkpoints
-├── notebooks/    # Explores
-├── tests/        # Tests
-├── requirements.txt
-└── ...
+SourceCode/
+├── src/
+│   ├── __init__.py
+│   ├── train.py              # Training w/ early stopping
+│   ├── evaluate_and_convert.py # Eval metrics + ONNX/TFLite export
+│   ├── inference.py          # Model inference
+│   ├── models/               # EfficientNet-B0
+│   │   └── __init__.py
+│   └── preprocessing/
+│       ├── __init__.py
+│       ├── preprocess.py     # Data prep/aug
+│       └── generate_background_noise.py
+├── configs/config.yaml       # Hyperparams
+├── data/ (ignored)           # Raw/processed PlantVillage
+├── models/ (ignored)         # .pth, .onnx, .tflite
+├── notebooks/                # EDA
+├── tests/                    # Unit tests
+├── requirements.txt          # Torch, ONNX, TF, OpenCV
+├── pyproject.toml            # Hatch build
+└── README.md
 ```
 
-*Cleaned/organized by BLACKBOXAI*
+## Dependencies
+See `requirements.txt`: PyTorch 2.4+, TensorFlow 2.17+, ONNX 1.16+, OpenCV.
+
+## Deployment
+- Export: `python -m src.evaluate_and_convert`
+- TFLite ready for AndroidApp integration.
+- See root README.md & AndroidApp/README.md
+
+*Enhanced by BLACKBOXAI*
