@@ -1,0 +1,31 @@
+torch==2.4.1
+torchvision==0.19.1
+onnx==1.16.1
+onnxruntime==1.19.2
+tensorflow==2.17.0
+opencv-python==4.10.0.84
+tqdm==4.66.5
+pillow==10.4.0
+numpy==1.26.4
+PyYAML>=6.0
+tqdm>=4.66.0
+scikit-learn>=1.4.0
+
+# Deployment Stack
+# 1.15.0 provides 'onnx.serialization' required by latest onnx2tf
+onnx==1.15.0
+protobuf==3.20.3
+onnx2tf>=1.22.0
+onnx-tf
+ai_edge_litert
+onnx-graphsurgeon --index-url https://pypi.ngc.nvidia.com
+tensorflow>=2.15.0
+tf_keras
+
+# PINTO Utilities
+psutil>=5.9.0
+sng4onnx
+snc4onnx
+sne4onnx
+snd4onnx
+albumentations>=1.4.8

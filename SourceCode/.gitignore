@@ -1,0 +1,91 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pth
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+.pytest_cache/
+.hypothesis/
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+py3_10/
+ENV/
+
+# Generated Data / Models / Outputs (regeneratable large files)
+data/
+models/
+notebooks/*.ipynb_checkpoints
+*.ipynb_checkpoints/
+*.h5
+*.keras
+*.pb
+*.onnx
+*.tflite
+*.lite
+plant_model_tflite*/
+plant_model_tflite_float32/
+configs/generated/
+
+# Logs / Databases / Temp
+*.log
+*.sql
+local.sqlite
+local.db
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# IDE / Editors
+.vscode/
+.idea/
+*.sublime-*
+
+# OS generated
+.DS_Store?
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

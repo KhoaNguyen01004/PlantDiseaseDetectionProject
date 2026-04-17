@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "plant-disease-detection"
+version = "0.1.0"
+description = "Plant leaf disease classifier"
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [{name = "Your Name", email = "email@example.com"}]
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+
+[project.optional-dependencies]
+dev = ["black", "isort", "pytest", "mypy"]
+
