@@ -25,11 +25,13 @@ This document provides comprehensive instructions for validating the entire pipe
 cd SourceCode
 
 # Train the model (requires data in data/raw/)
-python -m src.train --epochs 20 --batch-size 32 --lr 1e-4
+# Note: Arguments can also be set in configs/config.yaml
+python -m src.train
 
 # Expected output:
 # - models/best_model.pth (saved checkpoint)
 # - Console output showing training progress
+# - labels.json and labels.txt exported
 ```
 
 ### 2. Evaluation & Export
@@ -45,10 +47,10 @@ python -m src.evaluate_and_convert
 # - Classification report printed to console
 ```
 
-### 3. Standalone ONNX Export
+### 3. Alternative ONNX Export
 
 ```bash
-# Export only (using export_to_tflite.py)
+# Alternative export path (using export_to_tflite.py)
 python export_to_tflite.py --model models/best_model.pth
 
 # Expected output:
@@ -117,11 +119,8 @@ python -m src.quality_validator \
 ### 8. Metadata Export
 
 ```bash
-# Export all metadata
-python -m src.metadata \
-    --labels labels.json \
-    --config configs/config.yaml \
-    --output-dir .
+# Export all metadata (from SourceCode directory)
+python -m src.metadata
 
 # Expected output:
 # - metadata.json
@@ -132,11 +131,8 @@ python -m src.metadata \
 ### 9. Dataset Preparation
 
 ```bash
-# Prepare real-world dataset structure
-python prepare_real_world_dataset.py \
-    --base-dir data \
-    --create-classes \
-    --summary
+# Prepare real-world dataset structure (from SourceCode directory)
+python prepare_real_world_dataset.py --create-classes --summary
 
 # Expected output:
 # - Directory structure created
@@ -619,12 +615,13 @@ _______________________________________________
 |---------|--------------|----------|
 | `ImportError: No module named torch` | PyTorch not installed | `pip install -r requirements.txt` |
 | `FileNotFoundError: data/raw/` | Dataset not downloaded | Run `download_plantvillage.py` or place data manually |
-| `RuntimeError: size mismatch` | Architecture mismatch | Ensure all files use same EfficientNet version |
-| `ONNX export failed` | Opset version issue | Check ONNX version compatibility |
-| `onnx2tf failed` | Missing dependencies | Install `onnx2tf` and TensorFlow |
-| `TFLite inference gives wrong results` | Input preprocessing mismatch | Verify normalization matches training |
-| `Grad-CAM heatmap is uniform` | Wrong target layer | Verify layer name matches model architecture |
-| `Quality validator always fails` | Thresholds too strict | Adjust thresholds in config.yaml |
+| `RuntimeError: size mismatch for ...` | Architecture mismatch (B0 vs B2) | Verify all scripts use `efficientnet_b2` |
+| `ONNX export failed` | Opset version issue | Check ONNX version compatibility (1.16+) |
+| `onnx2tf failed` | Missing dependencies | Install `onnx2tf` and TensorFlow 2.17+ |
+| `TFLite inference gives wrong results` | Input preprocessing mismatch | Verify normalization matches training (ImageNet mean/std) |
+| `Grad-CAM heatmap is uniform/noisy` | Wrong target layer | Verify layer is `features.8.0` for EfficientNet-B2 |
+| `Quality validator always fails` | Thresholds too strict | Adjust in `configs/config.yaml` → `quality_validation` |
+| `ModuleNotFoundError: No module named 'scipy'` | Missing scipy | `pip install scipy` (required for softmax) |
 
 ---
 

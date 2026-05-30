@@ -6,11 +6,11 @@ Bridging the 2050 Food Security Gap with ML-powered plant disease detection.
 This project builds a plant-leaf disease classifier and a mobile UI prototype to demonstrate real-world diagnosis.
 
 - **Backend (`SourceCode/`)**
-  - **Model**: EfficientNet-B0 (PyTorch)
+  - **Model**: EfficientNet-B2 (PyTorch)
   - **Accuracy**: ~99.67% test accuracy on PlantVillage-like data
   - **Pipeline**: preprocessing + augmentation → training → evaluation → export to **ONNX/TFLite** for deployment
 
-- **Frontend (`AndroidApp/`)**
+- **Frontend (`agrilens/`)**
   - **App**: *AgriLens* Android app (Kotlin + Gradle)
   - **Status**: currently a lightweight skeleton; designed for future integration with the exported **TFLite** model
 
@@ -18,7 +18,7 @@ This project builds a plant-leaf disease classifier and a mobile UI prototype to
   - See `Project Proposal.*` and `PlantDiseaseDetectionKnowledge/` for deeper technical notes.
 
 ## Technology Used
-- **PyTorch**: model training (EfficientNet-B0)
+- **PyTorch**: model training (EfficientNet-B2)
 - **ONNX / TFLite**: model export for cross-platform deployment
 - **TensorFlow Lite Interpreter**: intended runtime path for mobile inference
 - **Android (Kotlin)**: mobile frontend implementation
@@ -31,14 +31,14 @@ This project builds a plant-leaf disease classifier and a mobile UI prototype to
 cd SourceCode
 py3_10/Scripts/activate  # Windows venv
 pip install -r requirements.txt
-python -m src.download_plantvillage  # Data
-python -m src.train  # Train
-python -m src.evaluate_and_convert  # TFLite export (and related exports/metrics)
+python -m src.download_plantvillage  # Data (if needed)
+python -m src.train  # Train (EfficientNet-B2, 260x260 images)
+python -m src.evaluate_and_convert  # Evaluate + Export to ONNX/TFLite
 ```
 
 ### Frontend
 ```bash
-cd AndroidApp
+cd agrilens
 ./gradlew build
 # Run with Android Studio on an emulator/device
 ```
@@ -46,24 +46,38 @@ cd AndroidApp
 ## Project Structure
 ```
 .
-├── README.md              # This
-├── TODO.md               # Tasks
-├── SourceCode/           # ML Backend
-│   ├── src/ (train.py, inference.py, models/, preprocessing/)
-│   ├── data/, models/     # Generated/ignored (by convention)
-│   ├── requirements.txt
-│   └── README.md         # Backend details
-├── AndroidApp/           # Mobile App
-│   ├── app/src/main/ (MainActivity.kt, res/)
-│   └── README.md         # App details
-└── Proposals/ docs
+├── README.md              # This file
+├── CHANGELOG.md           # Project history and changes
+├── Instruction.md         # Refactor roadmap and requirements
+├── PROJECT_SUMMARY.md     # Historical reference document
+├── VALIDATION_GUIDE.md    # Testing and validation procedures
+├── SourceCode/            # ML Backend
+│   ├── src/               # Main Python package
+│   │   ├── train.py       # Training pipeline (EfficientNet-B2)
+│   │   ├── inference.py   # TFLite inference CLI
+│   │   ├── evaluate_and_convert.py  # Evaluation + ONNX/TFLite export
+│   │   ├── gradcam.py     # Grad-CAM explainability
+│   │   ├── quality_validator.py  # Photo quality validation
+│   │   ├── metadata.py    # Model metadata management
+│   │   └── preprocessing/ # Data preprocessing & augmentation
+│   ├── configs/config.yaml  # Centralized configuration
+│   ├── data/              # Dataset (ignored by git)
+│   ├── models/            # Trained checkpoints (ignored by git)
+│   ├── requirements.txt   # Python dependencies
+│   └── README.md          # Backend details
+├── agrilens/              # Android App
+│   ├── app/src/main/      # MainActivity, resources
+│   └── README.md          # App setup details
+└── PlantDiseaseDetectionKnowledge/  # Technical documentation
 ```
 
 ## Roadmap
-1. Train/export model ✅
-2. Integrate TFLite in AgriLens
-3. Camera → Real-time detection
-4. Deploy (Play Store?)
+1. ✅ Train/export model (EfficientNet-B2, ONNX→TFLite pipeline)
+2. 🔄 Integrate TFLite in AgriLens (pending validation)
+3. 📸 Add photo quality validation (implemented, pending integration)
+4. 🎯 Add Grad-CAM explainability (implemented in Python, pending Android)
+5. 📱 Camera → Real-time detection
+6. 🚀 Deploy (Play Store?)
 
 See sub-READMEs for details.
 
