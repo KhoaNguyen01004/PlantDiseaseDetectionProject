@@ -7,7 +7,7 @@ This document tracks all changes made during the project refactor and improvemen
 ## [1.0.1] - 2026-05-30
 
 ### Summary
-Documentation cleanup and project maintenance. Updated all documentation to reflect the current EfficientNet-B2 architecture and deployment pipeline. Removed obsolete configuration files.
+Documentation cleanup, project maintenance, and academic report creation. Updated all documentation to reflect the current EfficientNet-B2 architecture and deployment pipeline. Removed obsolete configuration files. Created comprehensive academic report for course "Computer Vision in Human-Robot Interaction".
 
 ---
 
@@ -38,6 +38,34 @@ Documentation cleanup and project maintenance. Updated all documentation to refl
   - Updated dataset preparation command examples
   - Enhanced troubleshooting section with additional error scenarios
   - Added scipy dependency to common issues
+
+#### Files Created:
+- **`report.md`**
+  - Comprehensive academic report for course "Computer Vision in Human-Robot Interaction"
+  - **Structure:**
+    - Cover page with university, department, course, and student information
+    - Introduction (research context, motivation, objectives)
+    - Chapter 1: Project Overview (problem statement, objectives, scope, significance)
+    - Chapter 2: Theoretical Background (Computer Vision, Deep Learning, EfficientNet-B2, TFLite, Grad-CAM, Android AI)
+    - Chapter 3: System Analysis and Design (architecture, requirements, data flow, metadata design)
+    - Chapter 4: System Implementation (most detailed chapter - dataset, preprocessing, augmentation, model building, training, quality validation, Grad-CAM, metadata management, export pipeline, Android app)
+    - Chapter 5: Experiments and Evaluation (with TODO placeholders for runtime results)
+    - Chapter 6: Conclusion and Future Work
+    - References (placeholder)
+    - Appendices (configuration, commands, directory structure)
+  - **Key Features:**
+    - Written in formal academic Vietnamese (third person)
+    - Based on actual source code analysis
+    - No fabricated experimental results
+    - Uses TODO placeholders for runtime-dependent metrics
+    - ~800+ lines of detailed technical documentation
+  - **Technical Content:**
+    - Detailed explanation of EfficientNet-B2 architecture
+    - Complete data preprocessing and augmentation pipeline
+    - Grad-CAM implementation and usage
+    - Quality validation system (blur, brightness, resolution)
+    - ONNX/TFLite export pipeline
+    - Android deployment with PyTorch Mobile
 
 #### Files Removed:
 - **`SourceCode/config.yaml`**
@@ -264,8 +292,9 @@ Major refactor to fix architecture mismatches, improve robustness, and prepare f
 | Category | Files Created | Files Modified | Files Removed | Lines Changed |
 |----------|--------------|----------------|---------------|---------------|
 | Documentation Updates | 0 | 3 | 0 | ~150 |
+| Academic Report | 1 | 0 | 0 | ~800 |
 | Obsolete File Removal | 0 | 0 | 2 | N/A |
-| **TOTAL** | **0** | **3** | **2** | **~150** |
+| **TOTAL** | **1** | **3** | **2** | **~950** |
 
 ---
 
@@ -373,6 +402,7 @@ Major refactor to fix architecture mismatches, improve robustness, and prepare f
 - **SourceCode/README.md** - Comprehensive update with all features
 - **VALIDATION_GUIDE.md** - Updated commands and troubleshooting
 - **PROJECT_SUMMARY.md** - Kept as historical reference (unchanged)
+- **report.md** - NEW comprehensive academic report for course submission
 - All architecture references standardized to EfficientNet-B2
 - All directory references standardized to `agrilens/`
 
