@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">AgriLens</string>
+    <string name="title_detection">Plant Health Assessment</string>
+    <string name="btn_capture">Capture Leaf Photo</string>
+    <string name="btn_gallery">Select from Gallery</string>
+    <string name="status_ready">Align a leaf in the frame and capture, or pick an image.</string>
+    <string name="status_classifying">Analyzing leaf pattern locally…</string>
+    <string name="status_error">Error: Unable to analyze image. Ensure it\'s a clear photo of a leaf.</string>
+    <string name="label_result_title">Diagnostic Result</string>
+    <string name="permission_camera_rationale">This app requires camera permission to scan plant leaves offline.</string>
+    <string name="confidence_format">Confidence: %.1f%%</string>
+    <string name="prediction_format">Diagnosis: %s</string>
+</resources>

@@ -1,0 +1,6 @@
+{
+  "name": "AgriLens",
+  "description": "Offline-first local plant disease detection app for farmers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

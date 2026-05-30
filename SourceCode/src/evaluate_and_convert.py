@@ -32,8 +32,8 @@ def load_model_and_data(cfg_path='configs/config.yaml'):
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
-    # Modern Weights enum
-    model = models.efficientnet_b0(weights=models.EfficientNet_B0_Weights.IMAGENET1K_V1)
+    # Modern Weights enum - Must match train.py architecture (EfficientNet-B2)
+    model = models.efficientnet_b2(weights=models.EfficientNet_B2_Weights.IMAGENET1K_V1)
     classifier = model.classifier
     in_features = classifier[1].in_features
     model.classifier = nn.Sequential(classifier[0], nn.Linear(in_features, num_classes))

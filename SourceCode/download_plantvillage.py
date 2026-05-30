@@ -1,45 +1,103 @@
 #!/usr/bin/env python3
-"Download and prepare PlantVillage dataset (~54k images, 38 classes)."
+
 import os
-import urllib.request
 import zipfile
-from pathlib import Path
 import argparse
+from pathlib import Path
 
-URLS = {
-    'train': 'https://github.com/spMohanty/PlantVillage-Dataset/raw/master/color/New Plant Diseases Dataset(Augmented)/train.zip',
-    'val': 'https://github.com/spMohanty/PlantVillage-Dataset/raw/master/color/New Plant Diseases Dataset(Augmented)/valid.zip'
-}
+import kagglehub
+from tqdm import tqdm
 
-def download_and_extract(url, dest_dir):
-    zip_path = f'{dest_dir}.zip'
-    print(f'Downloading {url}...')
-    urllib.request.urlretrieve(url, zip_path)
-    
-    print(f'Extracting to {dest_dir}...')
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-        zip_ref.extractall('.')
-    
-    os.remove(zip_path)
-    print(f'Extracted to ./New Plant Diseases Dataset(Augmented)/{dest_dir.split("/")[-1]}')
-    print('Move to data/train and data/val manually or symlink.')
+
+DATASET = "abdallahalidev/plantvillage-dataset"
+
+
+def extract_all_zips(root_dir):
+    """
+    Recursively extract all zip files
+    """
+
+    zip_files = []
+
+    for path, _, files in os.walk(root_dir):
+        for file in files:
+            if file.endswith(".zip"):
+                zip_files.append(os.path.join(path, file))
+
+    if not zip_files:
+        print("No zip files found.")
+        return
+
+    print(f"\nFound {len(zip_files)} zip file(s).\n")
+
+    for zip_path in tqdm(zip_files, desc="Extracting ZIPs"):
+
+        extract_dir = os.path.dirname(zip_path)
+
+        try:
+            with zipfile.ZipFile(zip_path, "r") as zip_ref:
+                zip_ref.extractall(extract_dir)
+
+            os.remove(zip_path)
+
+        except Exception as e:
+            print(f"\nFailed to extract: {zip_path}")
+            print(e)
+
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--data-dir', default='data', help='Target dir')
-    args = parser.parse_args()
-    
-    os.makedirs(args.data_dir, exist_ok=True)
-    
-    for split, url in URLS.items():
-        dest = os.path.join(args.data_dir, split)
-        if os.path.exists(dest):
-            print(f'{dest} exists, skipping.')
-            continue
-        download_and_extract(url, dest)
-    
-    print('\nDataset ready! Expected ~43k train, ~11k val images.')
-    print('Run: python src/train.py')
 
-if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--data-dir",
+        default="data",
+        help="Directory to store dataset",
+    )
+
+    args = parser.parse_args()
+
+    data_dir = args.data_dir
+
+    Path(data_dir).mkdir(parents=True, exist_ok=True)
+
+    print("=" * 60)
+    print("PlantVillage Dataset Downloader (Kaggle)")
+    print("=" * 60)
+
+    print("\nDownloading dataset from Kaggle...\n")
+
+    dataset_path = kagglehub.dataset_download(DATASET)
+
+    print(f"\nDownloaded to cache:")
+    print(dataset_path)
+
+    print("\nCopying files to project data folder...\n")
+
+    # copy dataset structure
+    import shutil
+
+    target_dir = os.path.join(data_dir, "plantvillage")
+
+    if os.path.exists(target_dir):
+        print(f"{target_dir} already exists.")
+    else:
+        shutil.copytree(dataset_path, target_dir)
+
+    print("\nExtracting zip files if needed...\n")
+
+    extract_all_zips(target_dir)
+
+    print("\n" + "=" * 60)
+    print("Dataset ready!")
+    print("=" * 60)
+
+    print("\nDataset location:")
+    print(target_dir)
+
+    print("\nNext step:")
+    print("python src/train.py")
+
+
+if __name__ == "__main__":
     main()

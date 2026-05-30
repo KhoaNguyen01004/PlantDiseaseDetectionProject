@@ -126,16 +126,67 @@ def preprocess_image(rgb_path, gray_path, seg_path, image_size, mask_prob=0.7):
     logging.debug("No mask applied")
     return rgb
 
-def get_augmentation_pipeline(image_size):
+def get_augmentation_pipeline(image_size, config=None):
+    """Get augmentation pipeline for training.
+    
+    Includes strong augmentations to simulate real-world farming conditions:
+    - Weather effects: shadow, fog, rain
+    - Camera artifacts: motion blur, compression, noise
+    - Geometric transforms: rotation, scale, perspective
+    - Color transforms: brightness, contrast, grayscale
+    """
+    # Default configuration
+    if config is None:
+        config = {
+            "shadow_prob": 0.3,
+            "fog_prob": 0.2,
+            "rain_prob": 0.2,
+            "motion_blur_prob": 0.3,
+            "gauss_noise_prob": 0.4,
+            "compression_prob": 0.3,
+            "brightness_prob": 0.8,
+            "grayscale_prob": 0.05,
+            "blur_prob": 0.2,
+        }
+    
     return A.Compose([
+        # Geometric transforms
         A.RandomRotate90(p=0.5),
         A.Rotate(limit=180, border_mode=cv2.BORDER_REFLECT_101, p=1.0),
         A.RandomScale(scale_limit=0.2, p=0.8),
-        A.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3, p=0.8),
-        A.GaussNoise(p=0.5),
+        A.RandomPerspective(distortion_scale=0.3, p=0.4),
+        A.Affine(translate_percent=(-0.15, 0.15), shear=(-10, 10), p=0.5),
+        
+        # Weather simulations (real-world farming conditions)
+        A.RandomShadow(shadow_roi=(0, 0.5, 1, 1), num_shadows_lower=1, num_shadows_upper=3, p=config["shadow_prob"]),
+        A.RandomFog(fog_coef_lower=0.1, fog_coef_upper=0.4, alpha_coef=0.08, p=config["fog_prob"]),
+        A.RandomRain(rain_type="drizzle", slant_lower=-10, slant_upper=10, drop_length=20, drop_width=1, 
+                     drop_color=(200, 200, 200), blur_value=3, brightness_coefficient=0.7, p=config["rain_prob"]),
+        
+        # Camera artifacts (mobile phone photography)
+        A.MotionBlur(blur_limit=5, p=config["motion_blur_prob"]),
+        A.GaussNoise(var_limit=(10.0, 50.0), p=config["gauss_noise_prob"]),
+        A.ImageCompression(quality_lower=40, quality_upper=95, p=config["compression_prob"]),
+        
+        # Color transforms
+        A.RandomBrightnessContrast(
+            brightness_limit=(-0.4, 0.4), 
+            contrast_limit=(-0.4, 0.4), 
+            p=config["brightness_prob"]
+        ),
+        A.HueSaturationValue(hue_shift_limit=10, sat_shift_limit=20, val_shift_limit=10, p=0.3),
+        A.ToGray(p=config["grayscale_prob"]),
+        
+        # Gaussian blur (simulating out-of-focus)
+        A.GaussianBlur(blur_limit=3, p=config["blur_prob"]),
+        
+        # Resize and normalize
         A.Resize(image_size, image_size),
         A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ToTensorV2(),
+        
+        # Random erasing (occlusion simulation)
+        A.RandomErasing(p=0.25, scale=(0.02, 0.12), ratio=(0.3, 3.3), value='random'),
     ])
 
 class PlantVillageDataset(Dataset):
