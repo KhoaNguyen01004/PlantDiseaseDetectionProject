@@ -32,6 +32,23 @@ This project builds a plant-leaf disease classifier and a mobile UI prototype to
 cd SourceCode
 py3_10/Scripts/activate  # Windows venv
 pip install -r requirements.txt
+```
+
+### Download / prepare unknown dataset
+This project can automatically fetch the Leafsnap dataset from Kaggle and prepare the unknown image set used during training.
+
+```bash
+# Option 1: automatically download and prepare Leafsnap field images
+python prepare_unknown_dataset.py --download
+
+# Option 2: use an already-downloaded Leafsnap dataset root
+python prepare_unknown_dataset.py --source-dir path/to/leafsnap/dataset
+```
+
+> Note: The `--download` workflow requires the Kaggle CLI to be installed and authenticated.
+
+### Training and export
+```bash
 python -m src.download_plantvillage  # Data (if needed)
 python -m src.train  # Train (EfficientNet-B2, 260x260 images)
 python -m src.evaluate_and_convert  # Evaluate + Export to ONNX/TFLite (Python CLI)

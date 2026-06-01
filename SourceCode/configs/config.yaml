@@ -47,7 +47,7 @@ data:
   num_workers: 4
   seed: 42
   mask_prob: 0.7                    # Probability of applying segmentation mask during training
-  unknown_limit: 6000               # Max unknown/background images to use (0 = no limit)
+  unknown_limit: 0                  # Max unknown/background images to use (0 = no limit)
 
 # ============================================================
 # Data Augmentation (Real-World Robustness)

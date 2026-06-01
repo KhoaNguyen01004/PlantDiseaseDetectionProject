@@ -10,36 +10,45 @@ This document tracks all changes made during the project refactor and improvemen
 Enhanced unknown dataset training support: made unknown image limit configurable via `configs/config.yaml` and command-line arguments. Allows flexible scaling of background/unknown images during training without code changes.
 
 ### Changes
-- **`SourceCode/configs/config.yaml`**: Added `unknown_limit` parameter to `data` section (default: 6000, set to 0 for no limit)
+- **`SourceCode/configs/config.yaml`**: Added `unknown_limit` parameter to `data` section (default: 0 for no limit)
 - **`SourceCode/src/train.py`**: 
   - Added `--unknown-limit` CLI argument for runtime override
   - Modified unknown dataset loading to respect config value
-  - Now supports unlimited unknown images (when `unknown_limit: 0`)
+  - Now supports unlimited unknown images by default
+- **`SourceCode/prepare_unknown_dataset.py`**: Replaced CIFAR100-based unknown dataset creation with Leafsnap field-image import
+  - Copies all images from `source_dir/images/field/`
+  - Added optional Kaggle download support via `--download`
+  - Cleans up temporary downloads after extraction
+  - Preserves only field images from the Leafsnap dataset
 
 ### Usage Examples
 ```bash
-# Default: use 6000 unknown images from config
+# Default: use all available unknown images
 python -m src.train
 
-# Override config: use all available unknown images
+# Override config: use all available unknown images explicitly
 python -m src.train --unknown-limit 0
 
 # Override config: use 10000 unknown images
 python -m src.train --unknown-limit 10000
 
-# Change default in config.yaml
-data:
-  unknown_limit: 10000  # any number, 0 = unlimited
+# Prepare the unknown dataset from a local Leafsnap dataset directory
+python prepare_unknown_dataset.py --source-dir path/to/leafsnap/dataset
+
+# Prepare the unknown dataset by downloading Leafsnap from Kaggle (requires Kaggle CLI auth)
+python prepare_unknown_dataset.py --download
 ```
 
 ### Benefits
 - Flexible dataset scaling without code modification
 - Support for larger datasets as more unknown/background images are collected
 - Easy per-training customization via CLI override
+- Enables using Leafsnap field images as the unknown training set
 
 ### Files modified
-- `SourceCode/configs/config.yaml` (added `unknown_limit: 6000`)
+- `SourceCode/configs/config.yaml` (added `unknown_limit: 0`)
 - `SourceCode/src/train.py` (added CLI arg, config loading, dynamic limit)
+- `SourceCode/prepare_unknown_dataset.py` (Leafsnap field-image import)
 
 ---
 

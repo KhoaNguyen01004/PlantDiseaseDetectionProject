@@ -13,7 +13,8 @@ import numpy as np
 # Fix for module path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.preprocessing.preprocess import load_config, build_dataloaders, export_to_tflite
+from src.preprocessing.preprocess import load_config, export_to_tflite
+from src.train import build_dataloaders
 
 from .logging_config import get_logger
 
@@ -26,9 +27,22 @@ def load_model_and_data(cfg_path='configs/config.yaml'):
         sys.exit(1)
     
     cfg = load_config(cfg_path)
-    dataloaders, label_map = build_dataloaders(cfg)
-    num_classes = len(label_map)
-    logger.info(f'Loaded data with {num_classes} classes.')
+
+    dataset_root = cfg["data"]["raw_data_dir"]
+
+    dataloaders, class_names = build_dataloaders(
+        dataset_root=dataset_root,
+        batch_size=cfg["training"]["batch_size"],
+        image_size=cfg["image"]["size"],
+        config=cfg
+    )
+
+    label_map = {
+        idx: name
+        for idx, name in enumerate(class_names)
+    }
+    num_classes_data = len(label_map)
+    logger.info(f'Loaded data with {num_classes_data} classes.')
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
@@ -36,15 +50,37 @@ def load_model_and_data(cfg_path='configs/config.yaml'):
     model = models.efficientnet_b2(weights=models.EfficientNet_B2_Weights.IMAGENET1K_V1)
     classifier = model.classifier
     in_features = classifier[1].in_features
-    model.classifier = nn.Sequential(classifier[0], nn.Linear(in_features, num_classes))
     
     model_path = 'models/best_model.pth'
     if not os.path.exists(model_path):
         logger.error(f'Model missing: {model_path}. Run train.py first.')
         sys.exit(1)
     
-    model.load_state_dict(torch.load(model_path, map_location=device))
-    logger.info(f'Model loaded from {model_path} to {device}')
+    checkpoint = torch.load(model_path, map_location=device)
+    # Handle checkpoint wrapper format (model_state_dict, best_acc keys)
+    checkpoint_state = checkpoint['model_state_dict'] if (isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint) else checkpoint
+    
+    # Infer num_classes from checkpoint (includes unknown class)
+    num_classes_checkpoint = checkpoint_state.get(
+        'classifier.1.weight'
+    ).shape[0]
+
+    logger.info(
+        f'Checkpoint has {num_classes_checkpoint} classes '
+        f'(data has {num_classes_data}, +1 for unknown class)'
+    )
+
+    logger.info(
+        f"Checkpoint classes = {num_classes_checkpoint}"
+    )
+
+    logger.info(
+        f"Dataset classes = {num_classes_data}"
+    )
+    # Create model with checkpoint's num_classes (39: 38 known + 1 unknown)
+    model.classifier = nn.Sequential(classifier[0], nn.Linear(in_features, num_classes_checkpoint))
+    model.load_state_dict(checkpoint_state, strict=True)
+    logger.info(f'Model loaded from {model_path} to {device} with {num_classes_checkpoint} output classes')
     
     model.to(device).eval()
     return model, dataloaders, label_map, device, cfg
@@ -53,8 +89,10 @@ def run_evaluation(model, dataloaders, device, label_map):
     """Run test evaluation with metrics."""
     logger.info('Running test evaluation...')
     y_true, y_pred = [], []
-    rev_label_map = {v: k for k, v in label_map.items()}
-    target_names = [rev_label_map[i] for i in range(len(label_map))]
+    target_names = [
+        label_map[i]
+        for i in range(len(label_map))
+    ]
     
     with torch.no_grad():
         for inputs, labels in tqdm(dataloaders['test'], desc='Test Eval'):
@@ -186,6 +224,7 @@ def convert_to_tflite_int8(onnx_file, dataloaders, cfg):
 def main():
     try:
         model, dataloaders, label_map, device, cfg = load_model_and_data()
+        
         run_evaluation(model, dataloaders, device, label_map)
 
         image_size = cfg.get('image', {}).get('size', 260)

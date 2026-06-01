@@ -154,19 +154,19 @@ def get_augmentation_pipeline(image_size, config=None):
         A.RandomRotate90(p=0.5),
         A.Rotate(limit=180, border_mode=cv2.BORDER_REFLECT_101, p=1.0),
         A.RandomScale(scale_limit=0.2, p=0.8),
-        A.RandomPerspective(distortion_scale=0.3, p=0.4),
+        A.Perspective(scale=(0.05, 0.1), p=0.4),
         A.Affine(translate_percent=(-0.15, 0.15), shear=(-10, 10), p=0.5),
         
         # Weather simulations (real-world farming conditions)
-        A.RandomShadow(shadow_roi=(0, 0.5, 1, 1), num_shadows_lower=1, num_shadows_upper=3, p=config["shadow_prob"]),
-        A.RandomFog(fog_coef_lower=0.1, fog_coef_upper=0.4, alpha_coef=0.08, p=config["fog_prob"]),
-        A.RandomRain(rain_type="drizzle", slant_lower=-10, slant_upper=10, drop_length=20, drop_width=1, 
+        A.RandomShadow(shadow_roi=(0, 0.5, 1, 1), num_shadows_limit=(1, 3), p=config["shadow_prob"]),
+        A.RandomFog(fog_coef_range=(0.1, 0.4), alpha_coef=0.08, p=config["fog_prob"]),
+        A.RandomRain(rain_type="drizzle", slant_range=(-10, 10), drop_length=20, drop_width=1, 
                      drop_color=(200, 200, 200), blur_value=3, brightness_coefficient=0.7, p=config["rain_prob"]),
         
         # Camera artifacts (mobile phone photography)
         A.MotionBlur(blur_limit=5, p=config["motion_blur_prob"]),
-        A.GaussNoise(var_limit=(10.0, 50.0), p=config["gauss_noise_prob"]),
-        A.ImageCompression(quality_lower=40, quality_upper=95, p=config["compression_prob"]),
+        A.GaussNoise(std_range=(0.1, 0.2), p=config["gauss_noise_prob"]),
+        A.ImageCompression(quality_range=(40, 95), p=config["compression_prob"]),
         
         # Color transforms
         A.RandomBrightnessContrast(
@@ -186,7 +186,7 @@ def get_augmentation_pipeline(image_size, config=None):
         ToTensorV2(),
         
         # Random erasing (occlusion simulation)
-        A.RandomErasing(p=0.25, scale=(0.02, 0.12), ratio=(0.3, 3.3), value='random'),
+        A.Erasing(scale=(0.02, 0.12), ratio=(0.3, 3.3), fill='random', p=0.25),
     ])
 
 class PlantVillageDataset(Dataset):
