@@ -2,6 +2,12 @@
 
 This document provides comprehensive instructions for validating the entire pipeline after the refactor.
 
+**Note:** This project supports dual deployment paths:
+- **Python CLI**: Uses TFLite models (float32 and INT8 quantized)
+- **Android**: Uses PyTorch Mobile (TorchScript .pt format)
+
+This guide focuses primarily on the TFLite path for Python CLI. For Android deployment, see the Android Integration section.
+
 ---
 
 ## Table of Contents
@@ -10,9 +16,10 @@ This document provides comprehensive instructions for validating the entire pipe
 2. [Expected Outputs](#expected-outputs)
 3. [Architecture Verification](#architecture-verification)
 4. [TFLite Verification](#tflite-verification)
-5. [Grad-CAM Verification](#grad-cam-verification)
-6. [Configuration Verification](#configuration-verification)
-7. [Validation Report Template](#validation-report-template)
+5. [TorchScript Verification (Android)](#torchscript-verification-android)
+6. [Grad-CAM Verification](#grad-cam-verification)
+7. [Configuration Verification](#configuration-verification)
+8. [Validation Report Template](#validation-report-template)
 
 ---
 
@@ -24,7 +31,7 @@ This document provides comprehensive instructions for validating the entire pipe
 # Navigate to SourceCode directory
 cd SourceCode
 
-# Train the model (requires data in data/raw/)
+# Train the model (requires data in `data/plantvillage/plantvillage dataset/color/` or custom path configured in `configs/config.yaml`)
 # Note: Arguments can also be set in configs/config.yaml
 python -m src.train
 
@@ -58,7 +65,17 @@ python export_to_tflite.py --model models/best_model.pth
 # - saved_model/ directory with TFLite models
 ```
 
-### 4. Float32 TFLite Inference
+### 4. TorchScript Export (Android)
+
+```bash
+# Export to TorchScript .pt format for Android PyTorch Mobile
+python export_torchscript.py --model models/best_model.pth
+
+# Expected output:
+# - plant_model.pt (TorchScript model for Android)
+```
+
+### 5. Float32 TFLite Inference
 
 ```bash
 # Test inference with float32 model
@@ -72,7 +89,7 @@ python -m src.inference \
 # - Top-3 predictions
 ```
 
-### 5. INT8 TFLite Inference
+### 6. INT8 TFLite Inference
 
 ```bash
 # Test inference with INT8 model
@@ -86,7 +103,7 @@ python -m src.inference \
 # - Top-3 predictions
 ```
 
-### 6. Grad-CAM Generation
+### 7. Grad-CAM Generation
 
 ```bash
 # Generate Grad-CAM heatmap
@@ -102,7 +119,7 @@ python -m src.gradcam \
 # - overlay.png (heatmap overlay)
 ```
 
-### 7. Quality Validation
+### 8. Quality Validation
 
 ```bash
 # Validate image quality
@@ -116,7 +133,7 @@ python -m src.quality_validator \
 # - User guidance messages
 ```
 
-### 8. Metadata Export
+### 9. Metadata Export
 
 ```bash
 # Export all metadata (from SourceCode directory)
@@ -128,7 +145,7 @@ python -m src.metadata
 # - labels.txt
 ```
 
-### 9. Dataset Preparation
+### 10. Dataset Preparation
 
 ```bash
 # Prepare real-world dataset structure (from SourceCode directory)
@@ -154,10 +171,11 @@ models/
 SourceCode/
 ├── plant_model.onnx                    # ONNX model
 ├── plant_model_tflite_float32/
-│   └── plant_model.tflite              # Float32 TFLite model
+│   └── plant_model.tflite              # Float32 TFLite model (Python CLI)
 ├── plant_model_tflite_int8/
-│   └── plant_model_int8.tflite         # INT8 TFLite model
+│   └── plant_model_int8.tflite         # INT8 TFLite model (Python CLI)
 ├── plant_model_tf/                     # Intermediate TF model (for INT8)
+├── plant_model.pt                      # TorchScript model (Android PyTorch Mobile)
 └── labels.json / labels.txt            # Class labels
 ```
 
@@ -230,13 +248,13 @@ All of the following files should use `efficientnet_b2`:
 ### Verification Commands
 
 ```bash
-# Search for any remaining B0 references
+# Verify architecture consistency (should only find config comment and train.py factory)
 grep -r "efficientnet_b0" SourceCode/ --include="*.py"
 
 # Search for B2 references (should find 5+ occurrences)
 grep -r "efficientnet_b2" SourceCode/ --include="*.py"
 
-# Check image size consistency
+# Check image size consistency (should be 260 everywhere except ImageNet std values)
 grep -r "IMAGE_SIZE\|image_size\|260\|224" SourceCode/ --include="*.py" | grep -v "test"
 ```
 
@@ -244,13 +262,14 @@ grep -r "IMAGE_SIZE\|image_size\|260\|224" SourceCode/ --include="*.py" | grep -
 
 | Component | Expected Size | File Reference |
 |-----------|---------------|----------------|
-| Training | 260 | `src/train.py` line 175 |
+| Training | 260 | `configs/config.yaml` → `image.size` |
 | Evaluation | 260 | `configs/config.yaml` → `image.size` |
-| Export | 260 | `export_to_tflite.py` line 16 (should be 260, currently 224 - see note below) |
-| Inference | 260 | `src/inference.py` line 18 |
-| Grad-CAM | 260 | `src/gradcam.py` line 166 |
+| Export | 260 | `export_to_tflite.py` (reads from config) |
+| Inference | 260 | `src/inference.py` line 21 |
+| Grad-CAM | 260 | `src/gradcam.py` (reads from config) |
+| Background Noise | 260 | `src/preprocessing/generate_background_noise.py` line 13 |
 
-⚠️ **Note:** `export_to_tflite.py` still has `IMAGE_SIZE = 224` hardcoded. This needs to be updated to 260 for consistency. This is a known issue that should be fixed.
+✅ **Note:** All image size references have been updated to 260 to match EfficientNet-B2 input size. The architecture mismatch (B0 vs B2) was fixed in v1.0.0.
 
 ---
 
@@ -346,6 +365,55 @@ python -m src.inference \
 
 ---
 
+## TorchScript Verification (Android)
+
+### Why PyTorch Mobile for Android
+
+The Android app uses PyTorch Mobile (TorchScript .pt format) for on-device inference:
+- **Runtime**: PyTorch Android library (org.pytorch:pytorch_android:1.13.1)
+- **Model format**: TorchScript (.pt) exported via `export_torchscript.py`
+- **Image size**: 260×260 (matches EfficientNet-B2)
+- **Normalization**: ImageNet mean/std (same as training)
+- **Softmax**: Applied in Android code (ImageClassifierHelper.java)
+
+### How to Verify TorchScript Model
+
+1. **Export to TorchScript:**
+```bash
+python export_torchscript.py --model models/best_model.pth
+```
+
+2. **Verify file exists:**
+```bash
+ls -la plant_model.pt
+# Expected: File size ~40-50 MB
+```
+
+3. **Copy to Android assets:**
+```bash
+cp plant_model.pt ../agrilens/app/src/main/assets/
+cp labels.json ../agrilens/app/src/main/assets/
+cp labels.txt ../agrilens/app/src/main/assets/
+```
+
+4. **Verify Android integration:**
+   - Open `agrilens/app/src/main/java/com/example/ImageClassifierHelper.java`
+   - Check line 25: `MODEL_FILE = "plant_model.pt"`
+   - Check line 29: `IMAGE_SIZE = 260`
+   - Check lines 41-51: ImageNet normalization values
+   - Check lines 184-205: Softmax implementation
+
+### Expected Android Behavior
+
+- Model loads from assets on app startup
+- Images resized to 260×260
+- ImageNet normalization applied
+- Softmax converts logits to probabilities
+- Unknown class detection with 0.65 threshold
+- Demo mode fallback if model loading fails
+
+---
+
 ## Grad-CAM Verification
 
 ### Why Target Layer `features.8.0` is Correct for EfficientNet-B2
@@ -406,7 +474,7 @@ ls -la gradcam_result.png original.png overlay.png
 
 ---
 
-## Configuration Verification
+## 8. Configuration Verification
 
 ### New config.yaml Parameters
 
@@ -451,7 +519,7 @@ print(f\"Batch size: {config['training']['batch_size']}\")
 
 ---
 
-## Validation Report Template
+## 9. Validation Report Template
 
 Copy this template and fill it in during testing:
 
@@ -493,14 +561,14 @@ _______________________________________________
 
 ## 3. Architecture Verification
 
-- [ ] No `efficientnet_b0` references found
-- [ ] All 5 files use `efficientnet_b2`
-- [ ] Image size is 260 everywhere (except known issue in export_to_tflite.py)
+- [x] No `efficientnet_b0` references found (except config comment and train.py factory)
+- [x] All files use `efficientnet_b2` consistently
+- [x] Image size is 260 everywhere (except ImageNet std values)
 
 **grep results:**
 ```
-efficientnet_b0: _______ occurrences
-efficientnet_b2: _______ occurrences
+efficientnet_b0: Should only find config comment and train.py factory (acceptable)
+efficientnet_b2: Should find 5+ occurrences
 ```
 
 **Notes:**
@@ -614,8 +682,8 @@ _______________________________________________
 | Symptom | Likely Cause | Solution |
 |---------|--------------|----------|
 | `ImportError: No module named torch` | PyTorch not installed | `pip install -r requirements.txt` |
-| `FileNotFoundError: data/raw/` | Dataset not downloaded | Run `download_plantvillage.py` or place data manually |
-| `RuntimeError: size mismatch for ...` | Architecture mismatch (B0 vs B2) | Verify all scripts use `efficientnet_b2` |
+| `FileNotFoundError: data/raw/` | Dataset not downloaded or config points to a missing folder | Update `configs/config.yaml` to `data/plantvillage/plantvillage dataset/color/` or place the dataset there |
+| `RuntimeError: size mismatch for ...` | Checkpoint architecture mismatch | Verify checkpoint matches config architecture |
 | `ONNX export failed` | Opset version issue | Check ONNX version compatibility (1.16+) |
 | `onnx2tf failed` | Missing dependencies | Install `onnx2tf` and TensorFlow 2.17+ |
 | `TFLite inference gives wrong results` | Input preprocessing mismatch | Verify normalization matches training (ImageNet mean/std) |

@@ -10,7 +10,7 @@ types = ['solid'] * 100 + ['gaussian'] * 200 + ['gradient'] * 200
 random.shuffle(types)
 
 for i, img_type in enumerate(types):
-    h, w = 224, 224
+    h, w = 260, 260  # Match EfficientNet-B2 input size from config.yaml
     if img_type == 'solid':
         val = (i % 3) * 85
         img = np.full((h, w, 3), val, dtype=np.uint8)

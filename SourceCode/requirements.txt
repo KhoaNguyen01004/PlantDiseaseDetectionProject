@@ -1,37 +1,35 @@
-torch==2.4.1
-torchvision==0.19.1
+# ==============================================================================
+# Plant Disease Detection - Pinned Dependencies
+# ==============================================================================
 
+# --- Core Deep Learning & Computer Vision Stack ---
+torch==2.5.1
+torchvision==0.20.1
+albumentations==2.0.8
+opencv-python==4.10.0.84
+pillow==10.4.0
+
+# --- ONNX & Deployment Stack ---
 onnx==1.16.1
 onnxruntime==1.19.2
-
-tensorflow==2.17.0
-tf_keras
-
-opencv-python==4.10.0.84
-
-numpy==1.26.4
-pillow==10.4.0
-tqdm==4.66.5
-
-PyYAML>=6.0
-scikit-learn>=1.4.0
-
-# Deployment Stack
+onnx2tf==1.28.8
+onnx-graphsurgeon==0.6.1
+ai_edge_litert==2.1.5
 protobuf==3.20.3
+sng4onnx==2.0.1
+snc4onnx==1.0.14
+sne4onnx==2.0.1
+snd4onnx==1.1.7
 
-onnx2tf>=1.22.0
-ai_edge_litert
+# --- TensorFlow Backend (For ONNX -> TFLite Conversion) ---
+tensorflow==2.17.0
+tf_keras==2.17.0
 
-# NVIDIA
---extra-index-url https://pypi.ngc.nvidia.com
-onnx-graphsurgeon
-
-# PINTO Utilities
-psutil>=5.9.0
-
-sng4onnx
-snc4onnx
-sne4onnx
-snd4onnx
-
-albumentations>=1.4.8
+# --- Scientific Utilities & Metrics ---
+scipy==1.15.3
+scikit-learn==1.7.2
+matplotlib==3.8.4
+numpy==1.26.4
+PyYAML==6.0.3
+tqdm==4.66.5
+psutil==7.2.2

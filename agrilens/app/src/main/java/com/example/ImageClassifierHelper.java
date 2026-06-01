@@ -25,7 +25,8 @@ public class ImageClassifierHelper {
     private static final String MODEL_FILE = "plant_model.pt";
     private static final String LABELS_FILE = "labels.txt";
 
-    private static final int IMAGE_SIZE = 224;
+    // EfficientNet-B2 requires 260x260 input (see configs/config.yaml)
+    private static final int IMAGE_SIZE = 260;
 
     // Unknown threshold
     private static final float UNKNOWN_THRESHOLD = 0.65f;
@@ -51,6 +52,7 @@ public class ImageClassifierHelper {
 
     public interface ClassificationListener {
         void onClassificationResult(String label, float confidence);
+
         void onClassificationError(String errorMessage);
     }
 
@@ -62,13 +64,9 @@ public class ImageClassifierHelper {
     private void initLabels(Context context) {
 
         try (
-                BufferedReader reader =
-                        new BufferedReader(
-                                new InputStreamReader(
-                                        context.getAssets().open(LABELS_FILE)
-                                )
-                        )
-        ) {
+                BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(
+                                context.getAssets().open(LABELS_FILE)))) {
 
             String line;
 
@@ -95,8 +93,7 @@ public class ImageClassifierHelper {
 
         try {
 
-            String modelPath =
-                    assetFilePath(context, MODEL_FILE);
+            String modelPath = assetFilePath(context, MODEL_FILE);
 
             module = Module.load(modelPath);
 
@@ -112,14 +109,12 @@ public class ImageClassifierHelper {
 
     public void classify(
             Bitmap bitmap,
-            ClassificationListener listener
-    ) {
+            ClassificationListener listener) {
 
         if (bitmap == null) {
 
             listener.onClassificationError(
-                    "Bitmap is null"
-            );
+                    "Bitmap is null");
 
             return;
         }
@@ -133,28 +128,21 @@ public class ImageClassifierHelper {
 
         try {
 
-            Bitmap resizedBitmap =
-                    Bitmap.createScaledBitmap(
-                            bitmap,
-                            IMAGE_SIZE,
-                            IMAGE_SIZE,
-                            true
-                    );
+            Bitmap resizedBitmap = Bitmap.createScaledBitmap(
+                    bitmap,
+                    IMAGE_SIZE,
+                    IMAGE_SIZE,
+                    true);
 
-            Tensor inputTensor =
-                    TensorImageUtils.bitmapToFloat32Tensor(
-                            resizedBitmap,
-                            IMAGENET_MEAN,
-                            IMAGENET_STD
-                    );
+            Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(
+                    resizedBitmap,
+                    IMAGENET_MEAN,
+                    IMAGENET_STD);
 
-            Tensor outputTensor =
-                    module.forward(
-                            IValue.from(inputTensor)
-                    ).toTensor();
+            Tensor outputTensor = module.forward(
+                    IValue.from(inputTensor)).toTensor();
 
-            float[] scores =
-                    outputTensor.getDataAsFloatArray();
+            float[] scores = outputTensor.getDataAsFloatArray();
 
             int maxIndex = 0;
 
@@ -170,8 +158,7 @@ public class ImageClassifierHelper {
                 }
             }
 
-            float confidence =
-                    softmaxConfidence(scores, maxIndex);
+            float confidence = softmaxConfidence(scores, maxIndex);
 
             String label = labels.get(maxIndex);
 
@@ -183,23 +170,20 @@ public class ImageClassifierHelper {
 
             listener.onClassificationResult(
                     label,
-                    confidence
-            );
+                    confidence);
 
         } catch (Exception e) {
 
             Log.e(TAG, "Inference failed", e);
 
             listener.onClassificationError(
-                    e.getMessage()
-            );
+                    e.getMessage());
         }
     }
 
     private float softmaxConfidence(
             float[] logits,
-            int index
-    ) {
+            int index) {
 
         float max = Float.NEGATIVE_INFINITY;
 
@@ -217,21 +201,16 @@ public class ImageClassifierHelper {
             sum += Math.exp(v - max);
         }
 
-        return (float)(
-                Math.exp(logits[index] - max) / sum
-        );
+        return (float) (Math.exp(logits[index] - max) / sum);
     }
 
     private String assetFilePath(
             Context context,
-            String assetName
-    ) throws IOException {
+            String assetName) throws IOException {
 
-        File file =
-                new File(
-                        context.getFilesDir(),
-                        assetName
-                );
+        File file = new File(
+                context.getFilesDir(),
+                assetName);
 
         if (file.exists() && file.length() > 0) {
 
@@ -239,12 +218,9 @@ public class ImageClassifierHelper {
         }
 
         try (
-                InputStream is =
-                        context.getAssets().open(assetName);
+                InputStream is = context.getAssets().open(assetName);
 
-                FileOutputStream os =
-                        new FileOutputStream(file)
-        ) {
+                FileOutputStream os = new FileOutputStream(file)) {
 
             byte[] buffer = new byte[4 * 1024];
 
@@ -264,27 +240,23 @@ public class ImageClassifierHelper {
     // Demo mode fallback
     private void runSimulation(
             Bitmap bitmap,
-            ClassificationListener listener
-    ) {
+            ClassificationListener listener) {
 
         if (labels.isEmpty()) {
 
             listener.onClassificationError(
-                    "Labels empty"
-            );
+                    "Labels empty");
 
             return;
         }
 
-        int index =
-                Math.abs(bitmap.getWidth() + bitmap.getHeight())
-                        % labels.size();
+        int index = Math.abs(bitmap.getWidth() + bitmap.getHeight())
+                % labels.size();
 
         float confidence = 0.80f;
 
         listener.onClassificationResult(
                 labels.get(index),
-                confidence
-        );
+                confidence);
     }
 }

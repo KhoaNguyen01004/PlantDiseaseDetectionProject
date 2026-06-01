@@ -226,15 +226,25 @@ def split_data(samples, train_ratio, val_ratio, test_ratio, seed=42):
     return train, val, test
 
 def build_dataloaders(cfg):
-    raw_root = cfg.get("raw_data_dir", os.path.join(os.path.dirname(__file__), "..", "..", "data", "raw"))
+    raw_root = cfg.get("data", {}).get("raw_data_dir", os.path.join(os.path.dirname(__file__), "..", "..", "data", "raw"))
     samples, _, label_map = build_image_lists(raw_root)
     logging.info("Found %d samples across %d classes: %s", len(samples), len(label_map), list(label_map.keys()))
 
-    train_samples, val_samples, test_samples = split_data(samples, cfg["train_split"], cfg["val_split"], cfg["test_split"], cfg["seed"])
+    train_samples, val_samples, test_samples = split_data(
+        samples,
+        cfg.get("data", {}).get("train_split", 0.8),
+        cfg.get("data", {}).get("val_split", 0.1),
+        cfg.get("data", {}).get("test_split", 0.1),
+        cfg.get("data", {}).get("seed", 42)
+    )
 
-    train_dataset = PlantVillageDataset(train_samples, label_map, cfg["image_size"], augment=True)
-    val_dataset = PlantVillageDataset(val_samples, label_map, cfg["image_size"], augment=False)
-    test_dataset = PlantVillageDataset(test_samples, label_map, cfg["image_size"], augment=False)
+    image_size = cfg.get("image", {}).get("size", 260)
+    batch_size = cfg.get("training", {}).get("batch_size", 32)
+    num_workers = cfg.get("data", {}).get("num_workers", 4)
+
+    train_dataset = PlantVillageDataset(train_samples, label_map, image_size, augment=True)
+    val_dataset = PlantVillageDataset(val_samples, label_map, image_size, augment=False)
+    test_dataset = PlantVillageDataset(test_samples, label_map, image_size, augment=False)
 
     # WeightedRandomSampler for imbalance
     class_counts = Counter([s[3] for s in train_samples])
@@ -242,27 +252,20 @@ def build_dataloaders(cfg):
     sampler = WeightedRandomSampler(torch.tensor(sample_weights), len(sample_weights), replacement=True)
 
     dataloaders = {
-        "train": DataLoader(train_dataset, batch_size=cfg["batch_size"], sampler=sampler, shuffle=False, num_workers=cfg.get("num_workers", 4), pin_memory=True),
-        "val": DataLoader(val_dataset, batch_size=cfg["batch_size"], shuffle=False, num_workers=cfg.get("num_workers", 4), pin_memory=True),
-        "test": DataLoader(test_dataset, batch_size=cfg["batch_size"], shuffle=False, num_workers=cfg.get("num_workers", 4), pin_memory=True),
+        "train": DataLoader(train_dataset, batch_size=batch_size, sampler=sampler, shuffle=False, num_workers=num_workers, pin_memory=True),
+        "val": DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=True),
+        "test": DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=True),
     }
 
     return dataloaders, label_map
 
-def export_to_tflite(model, label_map, tflite_path):
-    """Export to TFLite with metadata support."""
-    import json
-    labels_list = list(label_map.keys())
-    with open('labels.json', 'w') as f:
-        json.dump(labels_list, f, indent=2)
-    with open('labels.txt', 'w') as f:
-        for label in labels_list:
-            f.write(label + '\n')
-    logging.info(f"Exported {len(labels_list)} labels to labels.json for TFLite bundling.")
-    if TFLITE_AVAILABLE:
-        logging.info("Use MetadataWriter:")
-        logging.info("  writer = MetadataWriter.create_from_model_with_version(...)")
-        logging.info("  writer.add_label_file(labels_file_path='labels.txt' )")
+def export_to_tflite(model, label_map, tflite_path, config=None):
+    """Export to TFLite with metadata support using centralized metadata module."""
+    from src.metadata import export_metadata_for_model
+    # Convert {class_name: class_id} to {class_id: class_name}
+    rev_label_map = {int(v): k for k, v in label_map.items()}
+    export_metadata_for_model(rev_label_map, output_dir=".", config=config)
+    logging.info(f"Exported all metadata and labels using centralized src.metadata module.")
 
 if __name__ == "__main__":
     config_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "configs", "config.yaml")
@@ -273,7 +276,7 @@ if __name__ == "__main__":
         logging.info("Dataloaders built: train=%d, val=%d, test=%d", len(dataloaders["train"].dataset), len(dataloaders["val"].dataset), len(dataloaders["test"].dataset))
         
         # Generate label files for TFLite
-        export_to_tflite(None, label_map, "model.tflite")
+        export_to_tflite(None, label_map, "model.tflite", config=cfg)
         
         logging.info("preprocess.py refactored: 3-ch RGB masked + sampler, 39 classes, TFLite labels ready.")
         logging.info("Preprocessing complete. Ready for model training.")

@@ -7,11 +7,11 @@ Convert OpenCV images/frames into the tensor that the TFLite model expects.
 
 ## Current logic summary
 - BGR → RGB
-- resize to 224×224
+- resize to 260×260
 - float32 + ImageNet mean/std normalization
 - transpose HWC → CHW
 - expand batch
-- cast to `uint8`
+- cast to `uint8` only when the TFLite interpreter indicates a quantized input dtype
 
 ## Why this is risky
 - If your TFLite model is float32, casting to `uint8` is incorrect.

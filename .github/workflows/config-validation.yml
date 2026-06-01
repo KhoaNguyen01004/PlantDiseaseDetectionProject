@@ -1,0 +1,103 @@
+name: Config & Format Validation
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'SourceCode/configs/**'
+      - 'SourceCode/src/**'
+      - '.github/workflows/config-validation.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'SourceCode/configs/**'
+      - 'SourceCode/src/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyyaml jsonschema
+    
+    - name: Validate config.yaml structure
+      run: |
+        python -c "
+        import yaml
+        import sys
+        
+        with open('SourceCode/configs/config.yaml', 'r') as f:
+            config = yaml.safe_load(f)
+        
+        # Required top-level sections
+        required_sections = ['model', 'image', 'training', 'data', 'inference']
+        for section in required_sections:
+            if section not in config:
+                print(f'ERROR: Missing required section: {section}')
+                sys.exit(1)
+        
+        # Validate model section
+        if 'architecture' not in config['model']:
+            print('ERROR: Missing model.architecture')
+            sys.exit(1)
+        if config['model']['architecture'] not in ['efficientnet_b0', 'efficientnet_b2', 'efficientnet_v2_s']:
+            print(f'ERROR: Invalid architecture: {config[\"model\"][\"architecture\"]}')
+            sys.exit(1)
+        
+        # Validate training section
+        if 'batch_size' not in config['training']:
+            print('ERROR: Missing training.batch_size')
+            sys.exit(1)
+        if 'epochs' not in config['training']:
+            print('ERROR: Missing training.epochs')
+            sys.exit(1)
+        
+        # Validate model.num_classes section
+        if 'num_classes' not in config['model']:
+            print('ERROR: Missing model.num_classes')
+            sys.exit(1)
+        if config['model']['num_classes'] != 39:
+            print(f'ERROR: Expected 39 classes, got {config["model"]["num_classes"]}')
+            sys.exit(1)
+
+        if 'size' not in config['image']:
+            print('ERROR: Missing image.size')
+            sys.exit(1)
+        
+        print('✅ config.yaml validation passed')
+        "
+    
+    - name: Validate version.json
+      run: |
+        python -c "
+        import json
+        import sys
+        
+        with open('version.json', 'r') as f:
+            version = json.load(f)
+        
+        # Required fields
+        required_fields = ['project_version', 'model_version', 'dataset_version']
+        for field in required_fields:
+            if field not in version:
+                print(f'ERROR: Missing required field: {field}')
+                sys.exit(1)
+        
+        print('✅ version.json validation passed')
+        "
+    
+    - name: Check Python code formatting (flake8 light check)
+      run: |
+        python -m pip install flake8
+        # Check for syntax errors and undefined names (not style)
+        flake8 SourceCode/src --count --select=E9,F63,F7,F82 --show-source --statistics || true

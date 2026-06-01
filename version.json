@@ -1,0 +1,14 @@
+{
+    "project_version": "1.0.6",
+    "model_version": "1.0.0",
+    "dataset_version": "v1.0.0",
+    "changelog_version": "1.0.6",
+    "export_version": "1.0.0",
+    "compatibility": {
+        "python": "3.10+",
+        "pytorch": "2.4+",
+        "torchvision": "0.19.1+",
+        "tensorflow": "2.17+",
+        "android_api_min": 24
+    }
+}

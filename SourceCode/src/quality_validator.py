@@ -9,10 +9,9 @@ import numpy as np
 import argparse
 import json
 from typing import Tuple, Dict, Optional
-import logging
+from .logging_config import get_logger
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class QualityValidator:
@@ -241,16 +240,17 @@ def main():
     validator = QualityValidator(config)
     is_valid, results = validator.validate(args.image)
     
-    # Print results
-    print(f"\nImage: {args.image}")
-    print(f"Valid: {'✅ YES' if is_valid else '❌ NO'}")
-    
+    # Log results (console user-friendly + structured log)
+    logger.info(f"Image: {args.image}")
+    if is_valid:
+        logger.info("Valid: ✅ YES")
+    else:
+        logger.warning("Valid: ❌ NO")
+
     if args.verbose:
-        print("\nDetailed Results:")
-        print(json.dumps(results, indent=2))
-    
-    print(f"\nGuidance:")
-    print(validator.get_user_guidance(results))
+        logger.debug("Detailed Results:\n" + json.dumps(results, indent=2))
+
+    logger.info("Guidance: %s", validator.get_user_guidance(results))
     
     # Exit with appropriate code
     exit(0 if is_valid else 1)

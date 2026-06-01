@@ -5,10 +5,10 @@
 - Excluded: everything under `AndroidApp/`
 
 ## High-level architecture
-- **Training**: EfficientNet-B0 fine-tuned for `num_classes`.
+- **Training**: EfficientNet-B2 by default, with a configurable model factory that supports `efficientnet_b0`, `efficientnet_b2`, and `efficientnet_v2_s`.
 - **Data**: directory-driven label mapping + optional mask-based augmentation (segmented mask).
-- **Augmentation**: Albumentations with rotations/scales/brightness/noise + ImageNet normalize.
-- **Inference**: runs a **TFLite** model with attempted delegate acceleration.
+- **Augmentation**: Albumentations with rotations/scales/brightness/noise + ImageNet normalization.
+- **Inference**: Python CLI inference targets TFLite and dynamically detects the model's input dtype/quantization parameters.
 
 ---
 

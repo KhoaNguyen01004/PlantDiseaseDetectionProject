@@ -7,20 +7,21 @@ This project builds a plant-leaf disease classifier and a mobile UI prototype to
 
 - **Backend (`SourceCode/`)**
   - **Model**: EfficientNet-B2 (PyTorch)
-  - **Accuracy**: ~99.67% test accuracy on PlantVillage-like data
-  - **Pipeline**: preprocessing + augmentation → training → evaluation → export to **ONNX/TFLite** for deployment
+  - **Evaluation**: metrics are produced by the `SourceCode/src/evaluate_and_convert.py` pipeline and should be verified from generated artifacts
+  - **Pipeline**: preprocessing + augmentation → training → evaluation → export to **ONNX/TFLite** (Python CLI) and **TorchScript** (Android)
 
 - **Frontend (`agrilens/`)**
   - **App**: *AgriLens* Android app (Kotlin + Gradle)
-  - **Status**: currently a lightweight skeleton; designed for future integration with the exported **TFLite** model
+  - **Runtime**: PyTorch Mobile (TorchScript .pt format)
+  - **Status**: Functional skeleton with PyTorch Mobile integration
 
 - **Documentation / proposals**
   - See `Project Proposal.*` and `PlantDiseaseDetectionKnowledge/` for deeper technical notes.
 
 ## Technology Used
 - **PyTorch**: model training (EfficientNet-B2)
-- **ONNX / TFLite**: model export for cross-platform deployment
-- **TensorFlow Lite Interpreter**: intended runtime path for mobile inference
+- **ONNX / TFLite**: model export for Python CLI inference
+- **PyTorch Mobile**: runtime for Android on-device inference (TorchScript .pt format)
 - **Android (Kotlin)**: mobile frontend implementation
 
 ## Quick Setup
@@ -33,7 +34,8 @@ py3_10/Scripts/activate  # Windows venv
 pip install -r requirements.txt
 python -m src.download_plantvillage  # Data (if needed)
 python -m src.train  # Train (EfficientNet-B2, 260x260 images)
-python -m src.evaluate_and_convert  # Evaluate + Export to ONNX/TFLite
+python -m src.evaluate_and_convert  # Evaluate + Export to ONNX/TFLite (Python CLI)
+python export_torchscript.py  # Export to TorchScript .pt (Android)
 ```
 
 ### Frontend
@@ -54,8 +56,8 @@ cd agrilens
 ├── SourceCode/            # ML Backend
 │   ├── src/               # Main Python package
 │   │   ├── train.py       # Training pipeline (EfficientNet-B2)
-│   │   ├── inference.py   # TFLite inference CLI
-│   │   ├── evaluate_and_convert.py  # Evaluation + ONNX/TFLite export
+│   │   ├── inference.py   # TFLite inference CLI (Python)
+│   │   ├── evaluate_and_convert.py  # Evaluation + ONNX/TFLite export (Python)
 │   │   ├── gradcam.py     # Grad-CAM explainability
 │   │   ├── quality_validator.py  # Photo quality validation
 │   │   ├── metadata.py    # Model metadata management
@@ -72,12 +74,13 @@ cd agrilens
 ```
 
 ## Roadmap
-1. ✅ Train/export model (EfficientNet-B2, ONNX→TFLite pipeline)
-2. 🔄 Integrate TFLite in AgriLens (pending validation)
-3. 📸 Add photo quality validation (implemented, pending integration)
-4. 🎯 Add Grad-CAM explainability (implemented in Python, pending Android)
-5. 📱 Camera → Real-time detection
-6. 🚀 Deploy (Play Store?)
+1. ✅ Train/export model (EfficientNet-B2, dual export paths)
+2. ✅ PyTorch Mobile integration in AgriLens (TorchScript .pt)
+3. 🔄 TFLite integration in AgriLens (alternative path, pending)
+4. 📸 Add photo quality validation (implemented, pending Android integration)
+5. 🎯 Add Grad-CAM explainability (implemented in Python, pending Android)
+6. 📱 Camera → Real-time detection
+7. 🚀 Deploy (Play Store?)
 
 See sub-READMEs for details.
 

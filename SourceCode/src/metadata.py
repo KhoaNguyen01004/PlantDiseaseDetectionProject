@@ -7,14 +7,40 @@ import json
 import os
 from datetime import datetime
 from typing import Dict, List, Optional, Any
-import logging
+from .logging_config import get_logger
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ModelMetadata:
     """Manages model metadata for deployment."""
+    
+    @staticmethod
+    def calculate_dataset_hash(dataset_dir: str) -> str:
+        """Calculate a quick reproducible hash of the dataset directory based on subdirectories and file sizes/counts.
+        This avoids hashing gigabytes of raw image data while remaining extremely fast and reliable.
+        """
+        import hashlib
+        if not dataset_dir or not os.path.exists(dataset_dir):
+            return "none"
+        
+        hasher = hashlib.sha256()
+        # Walk directory tree sorted to ensure deterministic order
+        for root, dirs, files in os.walk(dataset_dir):
+            dirs.sort()
+            files.sort()
+            for d in dirs:
+                hasher.update(d.encode('utf-8'))
+            for f in files:
+                file_path = os.path.join(root, f)
+                try:
+                    # Hash filename and file size
+                    file_size = os.path.getsize(file_path)
+                    hasher.update(f.encode('utf-8'))
+                    hasher.update(str(file_size).encode('utf-8'))
+                except OSError:
+                    pass
+        return hasher.hexdigest()[:16]
     
     def __init__(self, config: Optional[Dict] = None):
         """Initialize metadata manager.
@@ -23,22 +49,49 @@ class ModelMetadata:
             config: Configuration dictionary. If None, uses defaults.
         """
         self.config = config or {}
+        
+        # Get values from config, support nested structure of configs/config.yaml
+        model_cfg = self.config.get("model", {})
+        image_cfg = self.config.get("image", {})
+        training_cfg = self.config.get("training", {})
+        data_cfg = self.config.get("data", {})
+        meta_cfg = self.config.get("metadata", {})
+        
+        # Calculate dataset hash if "auto" or not provided
+        dataset_dir = data_cfg.get("raw_data_dir", "data/raw")
+        dataset_hash = data_cfg.get("dataset_hash", "auto")
+        if dataset_hash == "auto":
+            try:
+                # Find dataset root if it's nested
+                if not os.path.exists(dataset_dir):
+                    # Check relative paths
+                    for path in ["data", "../data", "SourceCode/data"]:
+                        if os.path.exists(path):
+                            dataset_dir = path
+                            break
+                dataset_hash = self.calculate_dataset_hash(dataset_dir)
+            except Exception as e:
+                logger.warning(f"Could not calculate dataset hash: {e}")
+                dataset_hash = "unknown"
+                
         self.metadata = {
             "model": {
-                "architecture": self.config.get("architecture", "efficientnet_b2"),
-                "num_classes": self.config.get("num_classes", 39),
-                "image_size": self.config.get("image_size", 260),
-                "input_mean": [0.485, 0.456, 0.406],
-                "input_std": [0.229, 0.224, 0.225],
+                "architecture": model_cfg.get("architecture", self.config.get("architecture", "efficientnet_b2")),
+                "num_classes": model_cfg.get("num_classes", self.config.get("num_classes", 39)),
+                "image_size": image_cfg.get("size", self.config.get("image_size", 260)),
+                "input_mean": image_cfg.get("mean", [0.485, 0.456, 0.406]),
+                "input_std": image_cfg.get("std", [0.229, 0.224, 0.225]),
             },
             "training": {
-                "dataset": self.config.get("dataset", "PlantVillage"),
-                "epochs": self.config.get("epochs", 20),
-                "batch_size": self.config.get("batch_size", 32),
-                "learning_rate": self.config.get("learning_rate", 1e-4),
+                "dataset": meta_cfg.get("description", self.config.get("dataset", "PlantVillage")),
+                "dataset_version": data_cfg.get("dataset_version", "v1.0.0"),
+                "dataset_hash": dataset_hash,
+                "epochs": training_cfg.get("epochs", self.config.get("epochs", 20)),
+                "batch_size": training_cfg.get("batch_size", self.config.get("batch_size", 32)),
+                "learning_rate": training_cfg.get("learning_rate", self.config.get("learning_rate", 1e-4)),
             },
             "version": {
-                "model": self.config.get("version", "1.0.0"),
+                "model": meta_cfg.get("version", self.config.get("version", "1.0.0")),
                 "export_date": datetime.now().isoformat(),
                 "export_tool": "plant_disease_detection_v1",
             },
@@ -252,11 +305,11 @@ def main():
     # Export metadata
     if label_map:
         paths = export_metadata_for_model(label_map, args.output_dir, config)
-        print(f"\nMetadata exported:")
+        logger.info("Metadata exported:")
         for name, path in paths.items():
-            print(f"  {name}: {path}")
+            logger.info(f"  {name}: {path}")
     else:
-        print("No labels found. Please provide a valid labels.json file.")
+        logger.error("No labels found. Please provide a valid labels.json file.")
 
 
 if __name__ == '__main__':

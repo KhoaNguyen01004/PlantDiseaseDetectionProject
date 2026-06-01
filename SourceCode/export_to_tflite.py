@@ -2,18 +2,45 @@ import os
 import json
 import argparse
 import subprocess
+import warnings
+import yaml
 
 import torch
 import torch.nn as nn
 
 from torchvision import models
 
+# =========================================================
+# DEPRECATION WARNING
+# =========================================================
+warnings.warn(
+    "\n" + "="*60 + "\n"
+    "DEPRECATED: export_to_tflite.py\n"
+    "="*60 + "\n"
+    "This script is deprecated and will be removed in a future version.\n"
+    "Please use the centralized evaluate and convert pipeline instead:\n"
+    "  - python -m src.evaluate_and_convert\n"
+    "\n"
+    "The old export_to_tflite.py script is no longer maintained.\n"
+    "="*60 + "\n",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 # =========================================================
 # CONFIG
 # =========================================================
 
-IMAGE_SIZE = 224
+# Dynamically load image size from config.yaml
+try:
+    config_path = os.path.join(os.path.dirname(__file__), "configs", "config.yaml")
+    if not os.path.exists(config_path):
+        config_path = "configs/config.yaml"
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+    IMAGE_SIZE = config["image"]["size"]
+except Exception as e:
+    IMAGE_SIZE = 260
 
 DEVICE = torch.device("cpu")
 

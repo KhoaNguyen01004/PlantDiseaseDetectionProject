@@ -15,9 +15,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.preprocessing.preprocess import load_config, build_dataloaders, export_to_tflite
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+from .logging_config import get_logger
+
+logger = get_logger(__name__)
 
 def load_model_and_data(cfg_path='configs/config.yaml'):
     """Load config, dataloaders, model with best weights. Safety checks."""
@@ -66,10 +66,11 @@ def run_evaluation(model, dataloaders, device, label_map):
     
     acc = accuracy_score(y_true, y_pred) * 100
     logger.info('Test Accuracy: %.2f%%', acc)
-    print('\nClassification Report:\n', classification_report(y_true, y_pred, target_names=target_names, digits=4))
+    report = classification_report(y_true, y_pred, target_names=target_names, digits=4)
+    logger.info('\nClassification Report:\n%s', report)
     return acc
 
-def export_onnx(model, image_size=224):
+def export_onnx(model, image_size=260):
     """Export model to ONNX."""
     onnx_file = 'plant_model.onnx'
     logger.info(f'Exporting to ONNX: {onnx_file}')
@@ -134,7 +135,7 @@ def calibration_dataset(dataloaders, cfg, num_calib=100):
     """Generator for PTQ calibration using 100 test images, uint8 input."""
     test_loader = dataloaders['test']
     calib_count = 0
-    image_size = cfg['image_size']
+    image_size = cfg.get('image', {}).get('size', 260)
     
     for inputs, _ in test_loader:
         for img in inputs:
@@ -186,14 +187,15 @@ def main():
     try:
         model, dataloaders, label_map, device, cfg = load_model_and_data()
         run_evaluation(model, dataloaders, device, label_map)
-        
-        onnx_file = export_onnx(model, cfg['image_size'])
+
+        image_size = cfg.get('image', {}).get('size', 260)
+        onnx_file = export_onnx(model, image_size)
         tflite_float = convert_to_tflite_float32(onnx_file)
         verify_tflite(tflite_float)
-        
+
         tflite_int8 = convert_to_tflite_int8(onnx_file, dataloaders, cfg)
         verify_tflite(tflite_int8)
-        
+
         logger.info('Pipeline complete: float32 + INT8 ready.')
     except Exception as e:
         logger.error(f'Pipeline failed: {e}')

@@ -3,7 +3,7 @@
 **Source:** `SourceCode/src/train.py` (function `train_model`)
 
 ## Purpose
-Fine-tune EfficientNet-B0 for plant disease classification.
+Fine-tune a configurable EfficientNet-family classifier for plant disease classification, with EfficientNet-B2 as the default architecture.
 
 ## Key steps
 - choose optimizer (AdamW)

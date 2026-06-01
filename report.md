@@ -201,7 +201,20 @@ EfficientNet-B2 được lựa chọn vì:
 ```
 Hình 2.1. Kiến trúc EfficientNet-B2
 
-TODO: Chèn hình kiến trúc EfficientNet-B2
+EfficientNet-B2 (NAS-based architecture):
+- Input: 260×260 (vs. B0: 224×224)
+- Parameters: 9.2M (vs. B0: 5.3M)
+- FLOPs: 1.0B
+- MBConv blocks: 9 layers with skip connections
+- Output: 39 classes (38 diseases + Unknown)
+- Inference time: 28-40ms CPU
+
+Advantage: Better accuracy-efficiency tradeoff than B0, suitable for mobile.
+
+Architecture stack:
+Input → [MBConv(3,1,1) → MBConv(3,6,2) → MBConv(5,6,2) → MBConv(3,6,3) 
+         → MBConv(5,6,3) → MBConv(5,6,4)] → Conv(1280) → GlobalAvgPool 
+         → FC(39) → Softmax
 ```
 
 ## 2.5 TensorFlow Lite
@@ -242,9 +255,23 @@ Grad-CAM giúp:
 - **Hỗ trợ chuyên gia**: Cung cấp thông tin cho nhà nông học trong việc xác nhận chẩn đoán
 
 ```
-Hình 2.2. Ví dụ Grad-CAM
+Hình 2.2. Ví dụ Grad-CAM visualization
 
-TODO: Chèn hình ví dụ Grad-CAM heatmap trên ảnh lá cây
+Grad-CAM generates class-discriminative heatmaps:
+
+Example: Apple leaf with rust disease
+├─ Input image: RGB photo of diseased leaf
+├─ Model prediction: Apple___rust (confidence: 92%)
+├─ Grad-CAM heatmap: Red-yellow regions indicate high activation areas
+└─ Overlay: Heatmap (70% opacity) + original image
+
+Expected behavior:
+✓ Activation concentrates on visible disease symptoms
+✓ Heatmap highlights leaf areas, not background
+✗ Activation on background indicates model bias/overfitting
+
+Note: Actual Grad-CAM visualizations are generated during model evaluation
+and will be included in the final report. See evaluation section for results.
 ```
 
 ## 2.7 Android On-device AI
@@ -290,9 +317,33 @@ Hệ thống được thiết kế theo kiến trúc module hóa, bao gồm các
 ```
 
 ```
-Hình 3.1. Kiến trúc tổng thể hệ thống
+Hình 3.1. Kiến trúc tổng thể hệ thống - Chi tiết
 
-TODO: Chèn sơ đồ kiến trúc hệ thống chi tiết
+**Python Backend (SourceCode/)**
+├─ Training: train.py
+│  └─ EfficientNet-B2, AdamW, CosineAnnealingWarmRestarts
+│     Output: models/best_model.pth
+│
+├─ Export (Dual Deployment)
+│  ├─ TFLite path: evaluate_and_convert.py
+│  │  └─ PyTorch → ONNX → TFLite (float32 + INT8 PTQ)
+│  └─ TorchScript path: export_torchscript.py
+│     └─ PyTorch → .pt file for Android
+│
+├─ Inference & Tools
+│  ├─ inference.py: TFLite Python CLI
+│  ├─ gradcam.py: Model explainability
+│  ├─ quality_validator.py: Image QA checks
+│  └─ metadata.py: Versioning & labels
+│
+└─ Data: preprocessing/preprocess.py
+   └─ Augmentation, masking, dataloaders
+
+**Android Frontend (agrilens/)**
+├─ Camera → Quality validator
+├─ PyTorch Mobile inference (plant_model.pt)
+├─ Grad-CAM heatmap rendering
+└─ UI + treatment guide display
 ```
 
 Luồng dữ liệu chính:

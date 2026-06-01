@@ -12,13 +12,26 @@ import json
 from tqdm import tqdm
 import logging
 from scipy.special import softmax
+import yaml
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-MEAN = np.array([0.485, 0.456, 0.406])
-STD = np.array([0.229, 0.224, 0.225])
-IMAGE_SIZE = 260  # Match EfficientNet-B2 input size
+
+def load_config(cfg_path=None):
+    if cfg_path is None:
+        cfg_path = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "configs", "config.yaml"))
+
+    if os.path.exists(cfg_path):
+        with open(cfg_path, "r") as f:
+            return yaml.safe_load(f) or {}
+
+    return {}
+
+_CONFIG = load_config()
+IMAGE_SIZE = _CONFIG.get("image", {}).get("size", 260)
+MEAN = np.array(_CONFIG.get("image", {}).get("mean", [0.485, 0.456, 0.406]), dtype=np.float32)
+STD = np.array(_CONFIG.get("image", {}).get("std", [0.229, 0.224, 0.225]), dtype=np.float32)
 
 
 def preprocess_image(img_path_or_frame, image_size=IMAGE_SIZE, input_dtype=np.float32):

@@ -1,13 +1,15 @@
 # Plant Disease Detection
 
-Plant leaf disease classification using EfficientNet-B2 (PyTorch). Achieves ~99.67% test accuracy on PlantVillage-like data. Supports ONNX/TFLite export for deployment.
+Plant leaf disease classification using EfficientNet-B2 (PyTorch). Evaluation metrics are produced by the `src.evaluate_and_convert` pipeline and should be verified from generated artifacts. Supports dual export paths: ONNX/TFLite (Python CLI) and TorchScript (Android PyTorch Mobile).
 
 ## Features
 - **Model**: EfficientNet-B2 (260×260 input images)
 - **Data preprocessing & augmentation** (real-world robustness: weather, camera artifacts)
 - **Training** with early stopping, cosine learning rate scheduler
 - **Evaluation & metrics** (accuracy, classification report)
-- **Export to ONNX/TFLite** (float32 and INT8 quantized models)
+- **Dual export paths**:
+  - **ONNX/TFLite** (float32 and INT8 quantized models) for Python CLI inference
+  - **TorchScript (.pt)** for Android PyTorch Mobile deployment
 - **Grad-CAM explainability** (heatmap visualization)
 - **Photo quality validation** (blur, brightness, resolution checks)
 - **Metadata management** (versioning, labels export)
@@ -15,7 +17,7 @@ Plant leaf disease classification using EfficientNet-B2 (PyTorch). Achieves ~99.
 ## Setup
 1. Activate venv: `py3_10\\Scripts\\activate` (Windows)
 2. Install deps: `pip install -r requirements.txt`
-3. Data in `data/raw/` (PlantVillage-like dataset)
+3. Data in `data/plantvillage/plantvillage dataset/color/` or override `configs/config.yaml` if using a different dataset layout
 4. Configuration in `configs/config.yaml` (single source of truth)
 
 ## Usage
@@ -23,8 +25,11 @@ Plant leaf disease classification using EfficientNet-B2 (PyTorch). Achieves ~99.
 # Train model (EfficientNet-B2)
 python -m src.train
 
-# Evaluate & Export to ONNX/TFLite
+# Evaluate & Export to ONNX/TFLite (Python CLI)
 python -m src.evaluate_and_convert
+
+# Export to TorchScript .pt (Android PyTorch Mobile)
+python export_torchscript.py
 
 # Test inference with TFLite model
 python -m src.inference --model plant_model_tflite_float32/plant_model.tflite --image test.jpg
@@ -56,8 +61,9 @@ All hyperparameters are centralized in `configs/config.yaml`:
 After running the full pipeline:
 - `models/best_model.pth` - Trained PyTorch checkpoint
 - `plant_model.onnx` - ONNX model for cross-platform deployment
-- `plant_model_tflite_float32/plant_model.tflite` - Float32 TFLite model
-- `plant_model_tflite_int8/plant_model_int8.tflite` - INT8 quantized TFLite model
+- `plant_model_tflite_float32/plant_model.tflite` - Float32 TFLite model (Python CLI)
+- `plant_model_tflite_int8/plant_model_int8.tflite` - INT8 quantized TFLite model (Python CLI)
+- `plant_model.pt` - TorchScript model for Android PyTorch Mobile
 - `metadata.json`, `labels.json`, `labels.txt` - Model metadata and class labels
 - Grad-CAM visualizations (when using gradcam.py)
 
@@ -79,8 +85,8 @@ SourceCode/
 ├── configs/
 │   ├── __init__.py
 │   └── config.yaml           # Centralized configuration (single source of truth)
-├── export_to_tflite.py       # Alternative ONNX→TFLite export script
-├── export_torchscript.py     # TorchScript export (DEPRECATED, kept for compatibility)
+├── export_to_tflite.py       # Alternative ONNX→TFLite export script (deprecated)
+├── export_torchscript.py     # TorchScript export for Android PyTorch Mobile
 ├── prepare_real_world_dataset.py  # Dataset structure preparation
 ├── prepare_unknown_dataset.py # Unknown class dataset preparation
 ├── download_plantvillage.py  # Dataset download utility
@@ -104,21 +110,32 @@ See `requirements.txt`:
 - **Utilities**: scipy (softmax), matplotlib (Grad-CAM), PyYAML, scikit-learn
 
 ## Deployment
-### TFLite Deployment (Recommended)
+
+### Python CLI Deployment (TFLite)
 ```bash
 # Export to TFLite (float32 and INT8)
 python -m src.evaluate_and_convert
 
+# Test inference with TFLite model
+python -m src.inference --model plant_model_tflite_float32/plant_model.tflite --image test.jpg
+```
+
+### Android Deployment (PyTorch Mobile)
+```bash
+# Export to TorchScript .pt format
+python export_torchscript.py --model models/best_model.pth
+
 # Copy to Android assets
-cp plant_model_tflite_float32/plant_model.tflite ../agrilens/app/src/main/assets/
+cp plant_model.pt ../agrilens/app/src/main/assets/
 cp labels.json ../agrilens/app/src/main/assets/
 cp labels.txt ../agrilens/app/src/main/assets/
 ```
 
 ### Android Integration
 - See root `README.md` and `agrilens/README.md` for Android setup
-- TFLite models are ready for mobile deployment
+- Android app uses **PyTorch Mobile (TorchScript .pt)** for on-device inference
 - Metadata files ensure label consistency across platforms
+- TFLite models are available as an alternative deployment path for Python CLI
 
 ---
 *Last updated: 2026-05-30 | Version 1.0.0*
