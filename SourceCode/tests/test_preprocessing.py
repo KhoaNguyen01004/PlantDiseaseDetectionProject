@@ -81,7 +81,8 @@ def test_split_reproducibility(mock_dataset_root, monkeypatch):
         image_size=260,
         config=config
     )
-    train_indices1 = sorted(dataloaders1["train"].dataset.indices)
+    train_dataset1 = dataloaders1["train"].dataset
+    train_samples1 = [train_dataset1[i] for i in range(len(train_dataset1))]
     
     # Run 2
     dataloaders2, _ = build_dataloaders(
@@ -90,6 +91,13 @@ def test_split_reproducibility(mock_dataset_root, monkeypatch):
         image_size=260,
         config=config
     )
-    train_indices2 = sorted(dataloaders2["train"].dataset.indices)
+    train_dataset2 = dataloaders2["train"].dataset
+    train_samples2 = [train_dataset2[i] for i in range(len(train_dataset2))]
     
-    assert train_indices1 == train_indices2, "Dataloader splitting was not reproducible with seed"
+    # Compare split sizes and samples to verify reproducibility
+    assert len(train_samples1) == len(train_samples2), "Train split size differs between runs"
+    
+    # Compare image tensors and labels to ensure same samples
+    for sample1, sample2 in zip(train_samples1, train_samples2):
+        assert (sample1[0] == sample2[0]).all(), "Image tensors differ between runs"
+        assert sample1[1] == sample2[1], "Labels differ between runs"
