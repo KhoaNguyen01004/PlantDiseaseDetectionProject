@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="accent_green">#059669</color>
+    <color name="accent_green_dark">#064E3B</color>
+    <color name="accent_green_light">#D1FAE5</color>
+    <color name="bg_main">#FBF9F6</color>
+    <color name="black">#FF000000</color>
+    <color name="btn_primary">#324D3E</color>
+    <color name="btn_primary_pressed">#253A2E</color>
+    <color name="btn_secondary">#EEE8E0</color>
+    <color name="btn_secondary_border">#D7D0C5</color>
+    <color name="card_bg">#EAE1D3</color>
+    <color name="card_border">#D7CDBE</color>
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="scanner_line">#10B981</color>
+    <color name="stone_250">#EAE2D8</color>
+    <color name="stone_300">#D7D3C7</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="text_muted">#524B3A</color>
+    <color name="text_primary">#1D1B16</color>
+    <color name="white">#FFFFFFFF</color>
+    <string name="app_name">AgriLens</string>
+    <string name="btn_capture">Capture Leaf Photo</string>
+    <string name="btn_gallery">Select from Gallery</string>
+    <string name="confidence_format">Confidence: %.1f%%</string>
+    <string name="label_result_title">Diagnostic Result</string>
+    <string name="permission_camera_rationale">This app requires camera permission to scan plant leaves offline.</string>
+    <string name="prediction_format">Diagnosis: %s</string>
+    <string name="status_classifying">Analyzing leaf pattern locally…</string>
+    <string name="status_error">Error: Unable to analyze image. Ensure it\'s a clear photo of a leaf.</string>
+    <string name="status_ready">Align a leaf in the frame and capture, or pick an image.</string>
+    <string name="title_detection">Plant Health Assessment</string>
+    <style name="Theme.MyApplication" parent="Theme.AppCompat.NoActionBar"/>
+</resources>
