@@ -48,10 +48,12 @@ DEVICE = torch.device(
     "cuda" if torch.cuda.is_available() else "cpu"
 )
 
-logger.info(f"Using device: {DEVICE}")
+# Only log device info in the main process to avoid spam from worker processes
+if __name__ != "__mp_main__":
+    logger.info(f"Using device: {DEVICE}")
 
-if torch.cuda.is_available():
-    logger.info(f"GPU: {torch.cuda.get_device_name(0)}")
+    if torch.cuda.is_available():
+        logger.info(f"GPU: {torch.cuda.get_device_name(0)}")
 
 
 # =========================================================
@@ -79,6 +81,44 @@ class UnknownDataset(Dataset):
         image = self.transform(image)
 
         return image, label
+
+
+# =========================================================
+# IMAGE PATH DATASET
+# =========================================================
+
+class ImagePathDataset(Dataset):
+    """
+    Dataset wrapper for image paths with labels.
+    Defined at module level to support multiprocessing pickling on Windows.
+    """
+    def __init__(self, samples, transform):
+        self.samples = samples
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+        path, label = self.samples[idx]
+        image = datasets.folder.default_loader(path)
+        if self.transform is not None:
+            image = self.transform(image)
+        return image, label
+
+
+# =========================================================
+# SEED WORKER
+# =========================================================
+
+def seed_worker(worker_id):
+    """
+    Worker initialization function for DataLoader.
+    Defined at module level to support multiprocessing pickling on Windows.
+    Uses torch.initial_seed() to derive worker-specific seeds for reproducibility.
+    """
+    worker_seed = torch.initial_seed() + worker_id
+    torch.manual_seed(worker_seed)
 
 
 # =========================================================
@@ -405,20 +445,7 @@ def build_dataloaders(
     # DATASET WRAPPER
     # =====================================================
 
-    class ImagePathDataset(Dataset):
-        def __init__(self, samples, transform):
-            self.samples = samples
-            self.transform = transform
-
-        def __len__(self):
-            return len(self.samples)
-
-        def __getitem__(self, idx):
-            path, label = self.samples[idx]
-            image = datasets.folder.default_loader(path)
-            if self.transform is not None:
-                image = self.transform(image)
-            return image, label
+    # ImagePathDataset is defined at module level for Windows pickling compatibility
 
     # =====================================================
     # SPLIT
@@ -457,9 +484,7 @@ def build_dataloaders(
     pin_memory = torch.cuda.is_available()
     loader_generator = torch.Generator().manual_seed(seed)
 
-    def seed_worker(worker_id):
-        worker_seed = seed + worker_id
-        torch.manual_seed(worker_seed)
+    # seed_worker is defined at module level for Windows pickling compatibility
 
     train_loader = DataLoader(
         train_dataset,
@@ -595,7 +620,7 @@ def train_model(
             T_mult=2
         )
 
-    scaler = torch.cuda.amp.GradScaler(
+    scaler = torch.amp.GradScaler(
         enabled=torch.cuda.is_available()
     )
 
@@ -632,7 +657,8 @@ def train_model(
 
             optimizer.zero_grad()
 
-            with torch.cuda.amp.autocast(
+            with torch.amp.autocast(
+                device_type='cuda',
                 enabled=torch.cuda.is_available()
             ):
 

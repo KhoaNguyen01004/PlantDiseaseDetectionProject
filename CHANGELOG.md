@@ -4,6 +4,40 @@ This changelog summarizes maintained project changes. Runtime results are not re
 
 ---
 
+## 2026-06-04 - Training Pipeline Multiprocessing Fixes
+
+### Summary
+
+Fixed Windows multiprocessing pickling errors, eliminated repeated logging from worker processes, and updated deprecated PyTorch AMP APIs in the training pipeline.
+
+### Changed
+
+- **Multiprocessing Pickling Fix**: Moved `ImagePathDataset` class and `seed_worker` function from local scope to module level in `src/train.py` to enable proper serialization on Windows spawn multiprocessing.
+  - `ImagePathDataset` now defined at module level after `UnknownDataset` class.
+  - `seed_worker` now uses `torch.initial_seed()` for worker-specific seed derivation instead of accessing local variables.
+  - Resolves: `AttributeError: Can't pickle local object 'build_dataloaders.<locals>.ImagePathDataset'` and related pickling errors.
+
+- **Logging Spam Fix**: Added main process guard to device initialization logging in `src/train.py`.
+  - Device info (`"Using device:"` and GPU name) now logged only once in main process.
+  - Prevents repeated log spam from DataLoader worker process initialization on Windows.
+  - Uses `if __name__ != "__mp_main__":` guard to detect worker processes.
+
+- **PyTorch AMP API Modernization**: Replaced deprecated `torch.cuda.amp` API with new `torch.amp` API in `src/train.py`.
+  - Replaced `torch.cuda.amp.GradScaler()` with `torch.amp.GradScaler()` (compatible with PyTorch 1.10+)
+  - Replaced `torch.cuda.amp.autocast()` with `torch.amp.autocast(device_type='cuda', ...)` (compatible with PyTorch 1.10+)
+  - Eliminates FutureWarning messages during training.
+  - Maintains backward compatibility with PyTorch 1.10+ while preparing for PyTorch 2.0+.
+
+### Runtime Results
+
+```text
+Training now runs on Windows with num_workers > 0 without pickling errors.
+Device logging no longer floods output with repeated messages.
+FutureWarning messages eliminated from training output.
+```
+
+---
+
 ## 2026-06-04 - Documentation Alignment
 
 ### Summary
