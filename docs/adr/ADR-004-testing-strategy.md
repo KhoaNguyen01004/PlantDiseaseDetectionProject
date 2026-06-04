@@ -1,25 +1,58 @@
-# ADR-004 — Testing strategy
+# ADR-004: Use Focused Tests And Explicit Runtime Validation
 
-## Status
-Accepted
+Status: Accepted
+
+---
 
 ## Context
-The repository requires reliable validation of preprocessing, export, inference, and metadata generation, especially because it supports multiple deployment targets and model export flows.
+
+The repository contains Python ML code and an Android app. Some checks can be automated quickly, while training and device performance require runtime execution.
+
+---
 
 ## Decision
-Use pytest-based unit tests under `SourceCode/tests/` plus validation documentation in `VALIDATION_GUIDE.md` to cover critical components.
 
-## Alternatives considered
-- Rely solely on manual validation and ad hoc scripts.
-- Use a lightweight script-only validation set without pytest.
-- Create a full integration test suite with external device dependency.
+Use focused automated tests for:
 
-## Tradeoffs
-- Unit tests provide fast, repeatable checks without external hardware.
-- They do not replace end-to-end Android or real-device validation.
-- Documentation must clearly distinguish between code-level tests and deployment verification steps.
+- config schema and bounds
+- dataloader behavior
+- metadata export
+- inference preprocessing
+- quality validation
+- export utility smoke tests
 
-## Consequences
-- Critical functionality is covered by tests for configuration, metadata export, export pipelines, inference preprocessing, and quality validation.
-- Validation guidance documents the path to verify TorchScript Android deployment separately.
-- The repo avoids claiming full device deployment as complete until Android runtime verification is explicitly performed.
+Use manual/runtime validation for:
+
+- full training quality
+- test-set metrics
+- Android inference latency
+- Android memory/battery behavior
+- real field-image behavior
+
+---
+
+## Commands
+
+Python tests:
+
+```bash
+cd SourceCode
+python -m pytest
+```
+
+Android build:
+
+```bash
+cd agrilens
+./gradlew.bat :app:assembleDebug
+```
+
+---
+
+## Placeholders
+
+```text
+Python test result: {{PYTHON_TEST_RESULT}}
+Android build result: {{ANDROID_BUILD_RESULT}}
+Device test result: {{DEVICE_TEST_RESULT}}
+```

@@ -31,6 +31,7 @@ training:
   epochs: 20
   label_smoothing: 0.1
   gradient_clip: 1.0
+  deterministic: false              # Set true for stricter reproducibility; false keeps cuDNN autotuning for speed
   scheduler:
     type: "cosine"                  # Options: cosine, step, exponential
     T_0: 5                          # Initial restart period for cosine
@@ -46,6 +47,7 @@ data:
   test_split: 0.1
   num_workers: 4
   seed: 42
+  unknown_data_dir: "data/unknown"
   mask_prob: 0.7                    # Probability of applying segmentation mask during training
   unknown_limit: 0                  # Max unknown/background images to use (0 = no limit)
 

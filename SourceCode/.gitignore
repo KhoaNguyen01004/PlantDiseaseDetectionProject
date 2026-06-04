@@ -67,6 +67,7 @@ plant_model_tflite_float32/
 configs/generated/
 
 # Logs / Databases / Temp
+logs/
 *.log
 *.sql
 local.sqlite

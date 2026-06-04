@@ -29,7 +29,7 @@
         <activity
             android:name=".GuideActivity"
             android:exported="false"
-            android:label="Plant Identification Guide"
+            android:label="@string/guide_title"
             android:theme="@style/Theme.MyApplication" />
     </application>
 

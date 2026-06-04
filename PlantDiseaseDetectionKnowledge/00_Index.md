@@ -1,42 +1,38 @@
-# PlantDiseaseDetection — Code Logic Entities Map (Obsidian)
+# Plant Disease Detection Knowledge Index
 
-This is an Obsidian-first knowledge base. **Pages are Markdown-only** and the map uses `[[wikilinks]]` without code blocks.
-
----
-
-## Entity pages
-- [[01 Inference_TFLite]]
-- [[02 Inference_Preprocess]]
-- [[03 Delegates]]
-- [[04 Training_Loop]]
-- [[05 Data_Split_Sampler]]
-- [[06 Augmentation_and_Masking]]
-- [[07 Preprocess_Export_Confusion]]
+These notes summarize the current technical design. They do not contain measured runtime results.
 
 ---
 
-## Connection map (wikilink-based)
+## Notes
 
-Inference entrypoint
-- [[01 Inference_TFLite]] → [[02 Inference_Preprocess]]
-- [[01 Inference_TFLite]] → [[03 Delegates]]
-
-Training data pipeline
-- [[04 Training_Loop]] ← [[05 Data_Split_Sampler]]
-- [[04 Training_Loop]] ← [[06 Augmentation_and_Masking]]
-
-Pipeline consistency / refactor
-- [[07 Preprocess_Export_Confusion]] → affects how inference expects labels + metadata
-- [[02 Inference_Preprocess]] → should align with training normalization/masking contract
+- `01 Inference_TFLite.md`: TFLite export and Python inference context.
+- `02 Inference_Preprocess.md`: preprocessing alignment between training and inference.
+- `03 Delegates.md`: runtime delegate notes.
+- `04 Training_Loop.md`: training loop behavior.
+- `05 Data_Split_Sampler.md`: data splitting and sampling.
+- `06 Augmentation_and_Masking.md`: augmentation and masking context.
+- `07 Preprocess_Export_Confusion.md`: common confusion between preprocessing/export paths.
+- `PlantDiseaseDetection_CodeReview.md`: current review notes and risks.
 
 ---
 
-## Suggested reading order
-1. [[01 Inference_TFLite]]
-2. [[02 Inference_Preprocess]]
-3. [[03 Delegates]]
-4. [[04 Training_Loop]]
-5. [[05 Data_Split_Sampler]]
-6. [[06 Augmentation_and_Masking]]
-7. [[07 Preprocess_Export_Confusion]]
+## Current Runtime Truth
 
+Android uses:
+
+```text
+PyTorch Mobile
+agrilens/app/src/main/assets/plant_model.pt
+agrilens/app/src/main/assets/labels.txt
+```
+
+Python export can generate:
+
+```text
+plant_model.onnx
+plant_model_tflite_float32/
+plant_model_tflite_int8/
+```
+
+Runtime metrics must be measured and recorded as placeholders until then.

@@ -1,35 +1,40 @@
-# Entity: Inference Preprocess
+# Inference Preprocessing
 
-**Source:** `SourceCode/src/inference.py` (function `preprocess_image`) 
+Training, Python inference, export calibration, and Android inference must use compatible preprocessing.
 
-## Purpose
-Convert OpenCV images/frames into the tensor that the TFLite model expects.
+---
 
-## Current logic summary
-- BGR → RGB
-- resize to 260×260
-- float32 + ImageNet mean/std normalization
-- transpose HWC → CHW
-- expand batch
-- cast to `uint8` only when the TFLite interpreter indicates a quantized input dtype
+## Current Configuration
 
-## Why this is risky
-- If your TFLite model is float32, casting to `uint8` is incorrect.
-- If your TFLite model is INT8 quantized, you must apply quantization using the model’s `input_details` scale/zero_point (not the ImageNet float normalization path + cast).
+From `SourceCode/configs/config.yaml` and Android helper code:
 
-## Best practice contract
-- Inspect `input_details[0]['dtype']`
-- Inspect `input_details[0]['quantization']`
-- Branch preprocessing accordingly:
-  - float model: keep float32, don’t cast to uint8
-  - quantized model: quantize using scale/zero_point and cast to the interpreter-required dtype
+```text
+Input size: 260 x 260
+Mean: [0.485, 0.456, 0.406]
+Std: [0.229, 0.224, 0.225]
+```
 
-## Output decoding note
-Your inference currently uses `conf = max(output)`.
-- If outputs are logits: apply softmax first.
-- If outputs are already probabilities: max is fine.
+These are configuration/code facts, not measured metrics.
 
-## Links
-- [[01 Inference_TFLite]]
-- [[04 Training_Loop]] (for preprocessing consistency)
+---
 
+## Android Path
+
+```text
+Bitmap
+  -> resize to 260 x 260
+  -> TensorImageUtils.bitmapToFloat32Tensor
+  -> PyTorch Mobile module
+```
+
+---
+
+## Validation
+
+Record after checking:
+
+```text
+Android preprocessing verified: {{ANDROID_PREPROCESSING_VERIFIED}}
+Python preprocessing verified: {{PYTHON_PREPROCESSING_VERIFIED}}
+Export calibration preprocessing verified: {{EXPORT_PREPROCESSING_VERIFIED}}
+```

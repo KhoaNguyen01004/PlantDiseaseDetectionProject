@@ -1,22 +1,47 @@
-# Entity: Preprocess / Export Naming Confusion
+# Preprocess And Export Confusion
 
-**Source:** `SourceCode/src/preprocessing/preprocess.py` (function `export_to_tflite`)
+This note clarifies which files are source artifacts and which are generated exports.
 
-## Purpose (as implied by name)
-Intended to support TFLite packaging and metadata.
+---
 
-## Current behavior
-- writes label files (`labels.json`, `labels.txt`)
-- does not actually export the TFLite model
-- metadata writer code is only logged as “how to do it”
-- `tflite_path` argument is ignored
-- called with `export_to_tflite(None, ...)` in `__main__`
+## Keep
 
-## Impact
-- Confusing pipeline for future work
-- unclear whether metadata export is implemented
+```text
+SourceCode/models/best_model.pth
+SourceCode/labels.txt
+SourceCode/labels.json
+SourceCode/metadata.json
+agrilens/app/src/main/assets/plant_model.pt
+agrilens/app/src/main/assets/labels.txt
+```
 
-## Links
-- [[01 Inference_TFLite]]
-- [[02 Inference_Preprocess]]
+---
 
+## Generated
+
+```text
+SourceCode/plant_model.onnx
+SourceCode/plant_model.onnx.data
+SourceCode/plant_model.pt
+SourceCode/plant_model_tflite_float32/
+SourceCode/plant_model_tflite_int8/
+```
+
+Generated files can be removed when not needed if the checkpoint is kept.
+
+---
+
+## Runtime Paths
+
+Android:
+
+```text
+agrilens/app/src/main/assets/plant_model.pt
+agrilens/app/src/main/assets/labels.txt
+```
+
+Python TFLite:
+
+```text
+SourceCode/plant_model_tflite_*/
+```

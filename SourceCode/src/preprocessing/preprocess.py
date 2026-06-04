@@ -268,7 +268,7 @@ def export_to_tflite(model, label_map, tflite_path, config=None):
     logging.info(f"Exported all metadata and labels using centralized src.metadata module.")
 
 if __name__ == "__main__":
-    config_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "configs", "config.yaml")
+    config_path = os.path.join(os.path.dirname(__file__), "..", "..", "configs", "config.yaml")
     cfg = load_config(config_path)
 
     try:

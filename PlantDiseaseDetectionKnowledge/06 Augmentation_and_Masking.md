@@ -1,29 +1,34 @@
-# Entity: Augmentation & Segmentation Masking
+# Augmentation And Masking
 
-**Source:** `SourceCode/src/preprocessing/preprocess.py`
+The active training augmentations are defined in `SourceCode/src/train.py`.
 
-## Purpose
-Improve generalization by augmenting data and (optionally) masking background using segmented masks.
+---
 
-## Masking logic
-- during preprocessing, if `seg_path` exists and random condition triggers:
-  - read segmentation mask (grayscale)
-  - threshold to binary mask
-  - apply mask to RGB image
+## Current Training Augmentation
 
-## Augmentation pipeline
-Albumentations includes:
-- rotations and scaling
-- brightness/contrast
-- Gaussian noise
-- resize + ImageNet normalization
-- convert to tensor
+- Random resized crop.
+- Random horizontal and vertical flips.
+- Random rotation.
+- Random perspective.
+- Random affine transform.
+- Color jitter.
+- Optional grayscale.
+- Optional Gaussian blur controlled by `augmentation.blur_prob`.
+- Random erasing controlled by `augmentation.random_erasing_prob`.
 
-## Refactor note
-- resizing occurs both in preprocessing and again inside the augmentation pipeline
-- not always a correctness bug, but inefficient and can introduce slight differences
+---
 
-## Links
-- [[04 Training_Loop]]
-- [[02 Inference_Preprocess]]
+## Masking
 
+`configs/config.yaml` contains `data.mask_prob`, and `src/preprocessing/preprocess.py` includes masking utilities for preprocessing experiments.
+
+The main `src.train` dataloader currently trains from image folders and does not apply segmentation masks.
+
+---
+
+## Placeholders
+
+```text
+Augmentation ablation result: {{AUGMENTATION_ABLATION_RESULT}}
+Masking ablation result: {{MASKING_ABLATION_RESULT}}
+```

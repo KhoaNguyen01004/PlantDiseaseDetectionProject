@@ -8,20 +8,27 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
-    <!-- Natural Tones Custom Color Palette -->
-    <color name="bg_main">#FBF9F6</color>
+    <!-- AgriLens interface palette -->
+    <color name="bg_main">#F7F9F5</color>
     <color name="text_primary">#1D1B16</color>
-    <color name="text_muted">#524B3A</color>
-    <color name="card_bg">#EAE1D3</color>
-    <color name="card_border">#D7CDBE</color>
-    <color name="btn_primary">#324D3E</color>
-    <color name="btn_primary_pressed">#253A2E</color>
-    <color name="btn_secondary">#EEE8E0</color>
-    <color name="btn_secondary_border">#D7D0C5</color>
+    <color name="text_muted">#5B6258</color>
+    <color name="card_bg">#FFFFFF</color>
+    <color name="card_border">#DCE4D8</color>
+    <color name="btn_primary">#256D46</color>
+    <color name="btn_primary_pressed">#1B5235</color>
+    <color name="btn_secondary">#EEF3EA</color>
+    <color name="btn_secondary_border">#CBD8C7</color>
     <color name="accent_green">#059669</color>
     <color name="accent_green_light">#D1FAE5</color>
     <color name="accent_green_dark">#064E3B</color>
+    <color name="accent_amber">#B45309</color>
+    <color name="accent_amber_light">#FEF3C7</color>
+    <color name="accent_red">#B91C1C</color>
+    <color name="accent_red_light">#FEE2E2</color>
+    <color name="accent_blue">#2563EB</color>
+    <color name="accent_blue_light">#DBEAFE</color>
     <color name="scanner_line">#10B981</color>
-    <color name="stone_250">#EAE2D8</color>
-    <color name="stone_300">#D7D3C7</color>
+    <color name="stone_250">#ECF1E8</color>
+    <color name="stone_300">#D7E0D2</color>
+    <color name="camera_scrim">#6611140F</color>
 </resources>

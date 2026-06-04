@@ -1,24 +1,34 @@
-# Entity: Training Loop
+# Training Loop
 
-**Source:** `SourceCode/src/train.py` (function `train_model`)
+The main training loop is implemented in:
 
-## Purpose
-Fine-tune a configurable EfficientNet-family classifier for plant disease classification, with EfficientNet-B2 as the default architecture.
+```text
+SourceCode/src/train.py
+```
 
-## Key steps
-- choose optimizer (AdamW)
-- choose scheduler (CosineAnnealingLR)
-- run training epochs
-- validate each epoch
-- save best checkpoint by validation accuracy
+---
 
-## Structural notes
-The loop itself is logically sound.
-Primary risk is **pipeline mismatch**:
-- training preprocessing/normalization contract must match inference preprocessing
+## Current Behavior
 
-## Links
-- [[05 Data_Split_Sampler]]
-- [[06 Augmentation_and_Masking]]
-- [[02 Inference_Preprocess]]
+- Builds dataloaders from configured dataset paths.
+- Uses configurable EfficientNet architecture.
+- Uses AdamW.
+- Uses CrossEntropyLoss with label smoothing.
+- Uses mixed precision when CUDA is available.
+- Clips gradients.
+- Tracks validation accuracy.
+- Saves the best checkpoint to `models/best_model.pth`.
 
+The checkpoint stores weights, architecture, class names, config, metrics, and training history.
+
+---
+
+## Placeholders
+
+```text
+Best validation accuracy: {{BEST_VAL_ACCURACY}}
+Best epoch: {{BEST_EPOCH}}
+Final train loss: {{FINAL_TRAIN_LOSS}}
+Final validation loss: {{FINAL_VAL_LOSS}}
+Training duration: {{TRAINING_DURATION}}
+```

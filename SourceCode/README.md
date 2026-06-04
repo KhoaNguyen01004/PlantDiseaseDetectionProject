@@ -1,141 +1,158 @@
-# Plant Disease Detection
+# SourceCode
 
-Plant leaf disease classification using EfficientNet-B2 (PyTorch). Evaluation metrics are produced by the `src.evaluate_and_convert` pipeline and should be verified from generated artifacts. Supports dual export paths: ONNX/TFLite (Python CLI) and TorchScript (Android PyTorch Mobile).
+This directory contains the Python model pipeline for training, evaluation, metadata export, and deployment artifact generation.
 
-## Features
-- **Model**: EfficientNet-B2 (260×260 input images)
-- **Data preprocessing & augmentation** (real-world robustness: weather, camera artifacts)
-- **Training** with early stopping, cosine learning rate scheduler
-- **Evaluation & metrics** (accuracy, classification report)
-- **Dual export paths**:
-  - **ONNX/TFLite** (float32 and INT8 quantized models) for Python CLI inference
-  - **TorchScript (.pt)** for Android PyTorch Mobile deployment
-- **Grad-CAM explainability** (heatmap visualization)
-- **Photo quality validation** (blur, brightness, resolution checks)
-- **Metadata management** (versioning, labels export)
-
-## Setup
-1. Activate venv: `py3_10\\Scripts\\activate` (Windows)
-2. Install deps: `pip install -r requirements.txt`
-3. Data in `data/plantvillage/plantvillage dataset/color/` or override `configs/config.yaml` if using a different dataset layout
-4. Configuration in `configs/config.yaml` (single source of truth)
-
-## Usage
-```bash
-# Train model (EfficientNet-B2)
-python -m src.train
-
-# Evaluate & Export to ONNX/TFLite (Python CLI)
-python -m src.evaluate_and_convert
-
-# Export to TorchScript .pt (Android PyTorch Mobile)
-python export_torchscript.py
-
-# Test inference with TFLite model
-python -m src.inference --model plant_model_tflite_float32/plant_model.tflite --image test.jpg
-
-# Generate Grad-CAM heatmap
-python -m src.gradcam --image test.jpg --model models/best_model.pth
-
-# Validate image quality
-python -m src.quality_validator --image test.jpg
-
-# Export model metadata
-python -m src.metadata
-
-# Prepare real-world dataset structure
-python prepare_real_world_dataset.py --create-classes --summary
-```
-
-## Configuration
-All hyperparameters are centralized in `configs/config.yaml`:
-- Model architecture (efficientnet_b2)
-- Image size (260×260)
-- Training hyperparameters
-- Data augmentation settings
-- Quality validation thresholds
-- Inference configuration
-- Export options
-
-## Outputs
-After running the full pipeline:
-- `models/best_model.pth` - Trained PyTorch checkpoint
-- `plant_model.onnx` - ONNX model for cross-platform deployment
-- `plant_model_tflite_float32/plant_model.tflite` - Float32 TFLite model (Python CLI)
-- `plant_model_tflite_int8/plant_model_int8.tflite` - INT8 quantized TFLite model (Python CLI)
-- `plant_model.pt` - TorchScript model for Android PyTorch Mobile
-- `metadata.json`, `labels.json`, `labels.txt` - Model metadata and class labels
-- Grad-CAM visualizations (when using gradcam.py)
-
-## Detailed Structure
-```
-SourceCode/
-├── src/
-│   ├── __init__.py
-│   ├── train.py              # Training (EfficientNet-B2, weighted sampler)
-│   ├── evaluate_and_convert.py # Evaluation + ONNX/TFLite export (float32/INT8)
-│   ├── inference.py          # TFLite inference CLI (dynamic dtype detection)
-│   ├── gradcam.py            # Grad-CAM explainability (target: features.8.0)
-│   ├── quality_validator.py  # Photo quality validation (blur, brightness, resolution)
-│   ├── metadata.py           # Model metadata management & export
-│   └── preprocessing/
-│       ├── __init__.py
-│       ├── preprocess.py     # Data prep, augmentation, dataloader building
-│       └── generate_background_noise.py  # Background noise generation
-├── configs/
-│   ├── __init__.py
-│   └── config.yaml           # Centralized configuration (single source of truth)
-├── export_to_tflite.py       # Alternative ONNX→TFLite export script (deprecated)
-├── export_torchscript.py     # TorchScript export for Android PyTorch Mobile
-├── prepare_real_world_dataset.py  # Dataset structure preparation
-├── prepare_unknown_dataset.py # Unknown class dataset preparation
-├── download_plantvillage.py  # Dataset download utility
-├── data/ (ignored)           # Raw/processed PlantVillage dataset
-├── models/ (ignored)         # Trained checkpoints (.pth)
-├── saved_model/ (generated)  # TFLite export output
-├── plant_model.onnx          # Exported ONNX model
-├── plant_model_tflite_float32/  # Float32 TFLite export
-├── plant_model_tflite_int8/     # INT8 quantized TFLite export
-├── requirements.txt          # Python dependencies
-├── pyproject.toml            # Package configuration
-└── README.md
-```
-
-## Dependencies
-See `requirements.txt`:
-- **Core**: PyTorch 2.4+, torchvision 0.19.1
-- **Export**: ONNX 1.16+, TensorFlow 2.17+, onnx2tf
-- **Inference**: TensorFlow Lite, OpenCV 4.10+
-- **Augmentation**: albumentations 1.4.8+
-- **Utilities**: scipy (softmax), matplotlib (Grad-CAM), PyYAML, scikit-learn
-
-## Deployment
-
-### Python CLI Deployment (TFLite)
-```bash
-# Export to TFLite (float32 and INT8)
-python -m src.evaluate_and_convert
-
-# Test inference with TFLite model
-python -m src.inference --model plant_model_tflite_float32/plant_model.tflite --image test.jpg
-```
-
-### Android Deployment (PyTorch Mobile)
-```bash
-# Export to TorchScript .pt format
-python export_torchscript.py --model models/best_model.pth
-
-# Copy to Android assets
-cp plant_model.pt ../agrilens/app/src/main/assets/
-cp labels.json ../agrilens/app/src/main/assets/
-cp labels.txt ../agrilens/app/src/main/assets/
-```
-
-### Android Integration
-- See root `README.md` and `agrilens/README.md` for Android setup
-- Android app uses **PyTorch Mobile (TorchScript .pt)** for on-device inference
-- Metadata files ensure label consistency across platforms
-- TFLite models are available as an alternative deployment path for Python CLI
+Runtime-dependent values are not hardcoded in this documentation. Fill placeholders only after running the current pipeline.
 
 ---
-*Last updated: 2026-05-30 | Version 1.0.0*
+
+## Main Entry Points
+
+```text
+src/train.py                 Train and save the best PyTorch checkpoint
+src/evaluate_and_convert.py  Evaluate checkpoint and export ONNX/TFLite artifacts
+src/inference.py             Run TFLite inference from Python
+src/metadata.py              Export metadata.json, labels.json, labels.txt
+src/gradcam.py               Generate Grad-CAM visualizations
+src/quality_validator.py     Check image quality before inference
+```
+
+---
+
+## Configuration
+
+The central config is:
+
+```text
+configs/config.yaml
+```
+
+Current default facts from config:
+
+```yaml
+model:
+  architecture: "efficientnet_b2"
+  pretrained: true
+image:
+  size: 260
+training:
+  batch_size: 32
+  learning_rate: 1e-4
+data:
+  raw_data_dir: "data/plantvillage/plantvillage dataset/color"
+  unknown_data_dir: "data/unknown"
+```
+
+The discovered dataset class count is used for the model head. If `model.num_classes` differs from the discovered labels, training logs a warning and uses the dataset-derived count.
+
+---
+
+## Training
+
+Run from this directory:
+
+```bash
+python -m src.train
+```
+
+Optional overrides:
+
+```bash
+python -m src.train --epochs {{EPOCHS}}
+python -m src.train --batch-size {{BATCH_SIZE}}
+python -m src.train --lr {{LEARNING_RATE}}
+python -m src.train --unknown-limit {{UNKNOWN_LIMIT}}
+```
+
+Primary checkpoint:
+
+```text
+models/best_model.pth
+```
+
+The checkpoint stores:
+
+- model weights
+- best validation accuracy
+- best epoch
+- architecture
+- class names
+- class count
+- config snapshot
+- training history
+- best metrics
+
+---
+
+## Evaluation And Export
+
+Run:
+
+```bash
+python -m src.evaluate_and_convert
+```
+
+Generated artifacts can include:
+
+```text
+plant_model.onnx
+plant_model.onnx.data
+plant_model_tflite_float32/
+plant_model_tflite_int8/
+```
+
+These are generated deployment artifacts. They can be regenerated from `models/best_model.pth`.
+
+---
+
+## Android Export
+
+The Android app currently uses PyTorch Mobile/TorchScript:
+
+```text
+../agrilens/app/src/main/assets/plant_model.pt
+../agrilens/app/src/main/assets/labels.txt
+```
+
+If you export a new TorchScript model, copy the model and matching labels together. Do not update one without the other.
+
+---
+
+## Metadata
+
+Training exports:
+
+```text
+metadata.json
+labels.json
+labels.txt
+```
+
+These files should match the checkpoint and deployment model.
+
+---
+
+## Runtime Placeholders
+
+Record measured values here after running evaluation:
+
+```text
+Test accuracy: {{TEST_ACCURACY}}
+Macro F1: {{MACRO_F1}}
+Weighted F1: {{WEIGHTED_F1}}
+Best validation accuracy: {{BEST_VAL_ACCURACY}}
+Best epoch: {{BEST_EPOCH}}
+ONNX model size: {{ONNX_MODEL_SIZE}}
+TFLite float32 model size: {{TFLITE_FLOAT32_MODEL_SIZE}}
+TFLite int8 model size: {{TFLITE_INT8_MODEL_SIZE}}
+```
+
+---
+
+## Full Pipeline Reference
+
+See:
+
+```text
+TRAINING_PIPELINE.md
+```

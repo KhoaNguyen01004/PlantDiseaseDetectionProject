@@ -1,103 +1,201 @@
-# Smart Crop Disease Diagnosis Project
+# Plant Disease Detection Project
 
-Bridging the 2050 Food Security Gap with ML-powered plant disease detection.
+This repository contains a plant leaf disease detection system with two main parts:
 
-## Overview
-This project builds a plant-leaf disease classifier and a mobile UI prototype to demonstrate real-world diagnosis.
+- `SourceCode/`: Python training, evaluation, metadata, and export utilities.
+- `agrilens/`: Android application that runs on-device inference with PyTorch Mobile.
 
-- **Backend (`SourceCode/`)**
-  - **Model**: EfficientNet-B2 (PyTorch)
-  - **Evaluation**: metrics are produced by the `SourceCode/src/evaluate_and_convert.py` pipeline and should be verified from generated artifacts
-  - **Pipeline**: preprocessing + augmentation → training → evaluation → export to **ONNX/TFLite** (Python CLI) and **TorchScript** (Android)
+Runtime metrics such as accuracy, latency, model size, memory use, and dataset counts are intentionally left as placeholders until they are measured from the current trained artifacts.
 
-- **Frontend (`agrilens/`)**
-  - **App**: *AgriLens* Android app (Kotlin + Gradle)
-  - **Runtime**: PyTorch Mobile (TorchScript .pt format)
-  - **Status**: Functional skeleton with PyTorch Mobile integration
+---
 
-- **Documentation / proposals**
-  - See `Project Proposal.*` and `PlantDiseaseDetectionKnowledge/` for deeper technical notes.
+## Current Architecture
 
-## Technology Used
-- **PyTorch**: model training (EfficientNet-B2)
-- **ONNX / TFLite**: model export for Python CLI inference
-- **PyTorch Mobile**: runtime for Android on-device inference (TorchScript .pt format)
-- **Android (Kotlin)**: mobile frontend implementation
+The training pipeline uses a configurable EfficientNet family model. The current default in `SourceCode/configs/config.yaml` is:
 
-## Quick Setup
-### Backend
-> Prerequisite: a Python environment (venv) and installed dependencies.
-
-```bash
-cd SourceCode
-py3_10/Scripts/activate  # Windows venv
-pip install -r requirements.txt
+```yaml
+model:
+  architecture: "efficientnet_b2"
+image:
+  size: 260
 ```
 
-### Download / prepare unknown dataset
-This project can automatically fetch the Leafsnap dataset from Kaggle and prepare the unknown image set used during training.
+The Android app uses:
 
-```bash
-# Option 1: automatically download and prepare Leafsnap field images
-python prepare_unknown_dataset.py --download
+- PyTorch Mobile runtime.
+- `plant_model.pt` from `agrilens/app/src/main/assets/`.
+- `labels.txt` from `agrilens/app/src/main/assets/`.
+- CameraX for camera input.
+- English and Vietnamese UI strings.
 
-# Option 2: use an already-downloaded Leafsnap dataset root
-python prepare_unknown_dataset.py --source-dir path/to/leafsnap/dataset
-```
+The Python export pipeline can also generate ONNX and TFLite artifacts for experimentation or Python-side deployment, but the Android app currently loads the TorchScript `.pt` asset.
 
-> Note: The `--download` workflow requires the Kaggle CLI to be installed and authenticated.
+---
 
-### Training and export
-```bash
-python -m src.download_plantvillage  # Data (if needed)
-python -m src.train  # Train (EfficientNet-B2, 260x260 images)
-python -m src.evaluate_and_convert  # Evaluate + Export to ONNX/TFLite (Python CLI)
-python export_torchscript.py  # Export to TorchScript .pt (Android)
-```
+## Repository Layout
 
-### Frontend
-```bash
-cd agrilens
-./gradlew build
-# Run with Android Studio on an emulator/device
-```
-
-## Project Structure
-```
+```text
 .
-├── README.md              # This file
-├── CHANGELOG.md           # Project history and changes
-├── Instruction.md         # Refactor roadmap and requirements
-├── PROJECT_SUMMARY.md     # Historical reference document
-├── VALIDATION_GUIDE.md    # Testing and validation procedures
-├── SourceCode/            # ML Backend
-│   ├── src/               # Main Python package
-│   │   ├── train.py       # Training pipeline (EfficientNet-B2)
-│   │   ├── inference.py   # TFLite inference CLI (Python)
-│   │   ├── evaluate_and_convert.py  # Evaluation + ONNX/TFLite export (Python)
-│   │   ├── gradcam.py     # Grad-CAM explainability
-│   │   ├── quality_validator.py  # Photo quality validation
-│   │   ├── metadata.py    # Model metadata management
-│   │   └── preprocessing/ # Data preprocessing & augmentation
-│   ├── configs/config.yaml  # Centralized configuration
-│   ├── data/              # Dataset (ignored by git)
-│   ├── models/            # Trained checkpoints (ignored by git)
-│   ├── requirements.txt   # Python dependencies
-│   └── README.md          # Backend details
-├── agrilens/              # Android App
-│   ├── app/src/main/      # MainActivity, resources
-│   └── README.md          # App setup details
-└── PlantDiseaseDetectionKnowledge/  # Technical documentation
+├── SourceCode/
+│   ├── configs/config.yaml
+│   ├── src/
+│   │   ├── train.py
+│   │   ├── evaluate_and_convert.py
+│   │   ├── inference.py
+│   │   ├── metadata.py
+│   │   ├── gradcam.py
+│   │   ├── quality_validator.py
+│   │   └── preprocessing/
+│   ├── models/
+│   │   └── best_model.pth
+│   ├── TRAINING_PIPELINE.md
+│   └── README.md
+├── agrilens/
+│   ├── app/src/main/assets/
+│   │   ├── plant_model.pt
+│   │   └── labels.txt
+│   └── README.md
+├── docs/adr/
+├── PlantDiseaseDetectionKnowledge/
+├── VALIDATION_GUIDE.md
+├── PROJECT_SUMMARY.md
+├── CHANGELOG.md
+└── report.md
 ```
 
-## Roadmap
-1. ✅ Train/export model (EfficientNet-B2, dual export paths)
-2. ✅ PyTorch Mobile integration in AgriLens (TorchScript .pt)
-3. 🔄 TFLite integration in AgriLens (alternative path, pending)
-4. 📸 Add photo quality validation (implemented, pending Android integration)
-5. 🎯 Add Grad-CAM explainability (implemented in Python, pending Android)
-6. 📱 Camera → Real-time detection
-7. 🚀 Deploy (Play Store?)
+Generated export files may appear in `SourceCode/`, such as `plant_model.onnx`, `plant_model.onnx.data`, `plant_model.pt`, and `plant_model_tflite_*` folders. These are reproducible artifacts if `SourceCode/models/best_model.pth` is preserved.
 
-See sub-READMEs for details.
+---
 
+## Important Artifacts
+
+Keep:
+
+```text
+SourceCode/models/best_model.pth
+SourceCode/labels.txt
+SourceCode/labels.json
+SourceCode/metadata.json
+agrilens/app/src/main/assets/plant_model.pt
+agrilens/app/src/main/assets/labels.txt
+```
+
+Regeneratable export artifacts:
+
+```text
+SourceCode/plant_model.onnx
+SourceCode/plant_model.onnx.data
+SourceCode/plant_model.pt
+SourceCode/plant_model_tflite_float32/
+SourceCode/plant_model_tflite_int8/
+```
+
+Do not delete `SourceCode/models/best_model.pth` unless you are prepared to retrain.
+
+---
+
+## Training
+
+Run from `SourceCode/`:
+
+```bash
+python -m src.train
+```
+
+Optional overrides:
+
+```bash
+python -m src.train --epochs {{EPOCHS}}
+python -m src.train --batch-size {{BATCH_SIZE}}
+python -m src.train --lr {{LEARNING_RATE}}
+python -m src.train --unknown-limit {{UNKNOWN_LIMIT}}
+```
+
+The current training flow is documented in detail in:
+
+```text
+SourceCode/TRAINING_PIPELINE.md
+```
+
+---
+
+## Evaluation And Export
+
+Run from `SourceCode/`:
+
+```bash
+python -m src.evaluate_and_convert
+```
+
+Expected generated artifacts:
+
+```text
+plant_model.onnx
+plant_model_tflite_float32/
+plant_model_tflite_int8/
+```
+
+TorchScript export for Android is produced separately and copied to:
+
+```text
+agrilens/app/src/main/assets/plant_model.pt
+```
+
+Keep `labels.txt` synchronized with the model used by Android.
+
+---
+
+## Android App
+
+Run a debug build from `agrilens/`:
+
+```bash
+./gradlew.bat :app:assembleDebug
+```
+
+The app supports:
+
+- Live camera detection.
+- Capture-first detection.
+- Gallery image analysis.
+- Pause-on-known-result behavior so users can read results.
+- Care guidance for known diseases.
+- English and Vietnamese settings.
+- Adjustable text size.
+
+See:
+
+```text
+agrilens/README.md
+```
+
+---
+
+## Runtime Results
+
+Fill these after running the current model and app benchmarks:
+
+```text
+Test accuracy: {{TEST_ACCURACY}}
+Macro F1: {{MACRO_F1}}
+Weighted F1: {{WEIGHTED_F1}}
+TorchScript model size: {{TORCHSCRIPT_MODEL_SIZE}}
+ONNX model size: {{ONNX_MODEL_SIZE}}
+TFLite model size: {{TFLITE_MODEL_SIZE}}
+Android average inference latency: {{ANDROID_AVG_LATENCY}}
+Android memory usage: {{ANDROID_MEMORY_USAGE}}
+Dataset version/hash: {{DATASET_VERSION_OR_HASH}}
+```
+
+Do not replace placeholders with estimates.
+
+---
+
+## Documentation Map
+
+- `SourceCode/TRAINING_PIPELINE.md`: authoritative training/export pipeline.
+- `VALIDATION_GUIDE.md`: validation checklist and commands.
+- `PROJECT_SUMMARY.md`: current project summary.
+- `report.md`: academic report draft with placeholders.
+- `docs/adr/`: architecture decision records.
+- `PlantDiseaseDetectionKnowledge/`: focused technical notes.

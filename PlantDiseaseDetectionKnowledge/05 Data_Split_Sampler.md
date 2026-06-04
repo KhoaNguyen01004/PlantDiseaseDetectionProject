@@ -1,22 +1,39 @@
-# Entity: Data Split & Class Imbalance Sampler
+# Data Split And Sampling
 
-**Source:** `SourceCode/src/preprocessing/preprocess.py`
+Data loading is handled by `SourceCode/src/train.py`.
 
-## Purpose
-Create train/val/test splits and mitigate class imbalance.
+---
 
-## Split behavior
-- stratified train/val/test splitting using labels derived from directory names
+## Current Behavior
 
-## Sampler behavior
-- compute per-class counts on the training set
-- compute inverse-frequency weights per sample
-- use `WeightedRandomSampler` with replacement
+- Loads class folders with `torchvision.datasets.ImageFolder`.
+- Adds optional unknown/background images from `data.unknown_data_dir`.
+- Uses stratified train/validation/test splitting when the dataset is large enough.
+- Falls back to seeded random splitting for tiny datasets.
+- Uses configured `data.seed`.
 
-## Assessment
-Overall appropriate for class imbalance.
+---
 
-## Links
-- [[04 Training_Loop]]
-- [[06 Augmentation_and_Masking]]
+## Config
 
+```yaml
+data:
+  train_split: 0.8
+  val_split: 0.1
+  test_split: 0.1
+  seed: 42
+  unknown_data_dir: "data/unknown"
+  unknown_limit: 0
+```
+
+---
+
+## Placeholders
+
+```text
+Train sample count: {{TRAIN_SAMPLE_COUNT}}
+Validation sample count: {{VAL_SAMPLE_COUNT}}
+Test sample count: {{TEST_SAMPLE_COUNT}}
+Unknown sample count: {{UNKNOWN_SAMPLE_COUNT}}
+Class imbalance summary: {{CLASS_IMBALANCE_SUMMARY}}
+```

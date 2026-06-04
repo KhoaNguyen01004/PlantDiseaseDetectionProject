@@ -1,25 +1,43 @@
-# Entity: Inference (TFLite)
+# Inference And TFLite
 
-**Source:** `SourceCode/src/inference.py`
+TFLite is supported by the Python export/inference path, but it is not the current Android runtime.
 
-## Purpose
-CLI inference for the TFLite plant disease model, supporting:
-- single image (`--image`)
-- webcam loop (`--webcam`)
+---
 
-## Responsibilities
-- load the TFLite model via `tf.lite.Interpreter(...)`
-- optionally attach delegates
-- preprocess the image/frame
-- run `interpreter.invoke()`
-- decode the output and return/display prediction
+## Current Use
 
-## Critical issues
-- Preprocessing likely mismatches the model input contract (especially dtype/quantization)
-- “confidence” uses `max(output)` without guaranteeing the output is probabilities
-- Delegate loading is not robust/portable (hardcoded `.so` names)
+Python-side TFLite inference:
 
-## Links
-- [[02 Inference_Preprocess]]
-- [[03 Delegates]]
+```bash
+cd SourceCode
+python -m src.inference --model {{TFLITE_MODEL_PATH}} --image {{IMAGE_PATH}} --labels labels.json
+```
 
+Android inference:
+
+```text
+PyTorch Mobile + plant_model.pt
+```
+
+---
+
+## TFLite Artifacts
+
+Generated artifacts may include:
+
+```text
+SourceCode/plant_model_tflite_float32/
+SourceCode/plant_model_tflite_int8/
+```
+
+These can be regenerated if `SourceCode/models/best_model.pth` is kept.
+
+---
+
+## Placeholders
+
+```text
+TFLite float32 accuracy: {{TFLITE_FLOAT32_ACCURACY}}
+TFLite int8 accuracy: {{TFLITE_INT8_ACCURACY}}
+TFLite latency: {{TFLITE_LATENCY}}
+```

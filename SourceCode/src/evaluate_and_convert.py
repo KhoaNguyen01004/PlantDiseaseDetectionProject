@@ -1,8 +1,6 @@
 import os
 import sys
 import torch
-import torch.nn as nn
-import torchvision.models as models
 from tqdm import tqdm
 from sklearn.metrics import accuracy_score, classification_report
 import logging
@@ -14,7 +12,7 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.preprocessing.preprocess import load_config, export_to_tflite
-from src.train import build_dataloaders
+from src.train import build_dataloaders, build_model, find_dataset_root
 
 from .logging_config import get_logger
 
@@ -28,7 +26,11 @@ def load_model_and_data(cfg_path='configs/config.yaml'):
     
     cfg = load_config(cfg_path)
 
-    dataset_root = cfg["data"]["raw_data_dir"]
+    configured_root = cfg["data"]["raw_data_dir"]
+    try:
+        dataset_root = find_dataset_root(configured_root)
+    except FileNotFoundError:
+        dataset_root = configured_root
 
     dataloaders, class_names = build_dataloaders(
         dataset_root=dataset_root,
@@ -37,20 +39,8 @@ def load_model_and_data(cfg_path='configs/config.yaml'):
         config=cfg
     )
 
-    label_map = {
-        idx: name
-        for idx, name in enumerate(class_names)
-    }
-    num_classes_data = len(label_map)
-    logger.info(f'Loaded data with {num_classes_data} classes.')
-    
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    
-    # Modern Weights enum - Must match train.py architecture (EfficientNet-B2)
-    model = models.efficientnet_b2(weights=models.EfficientNet_B2_Weights.IMAGENET1K_V1)
-    classifier = model.classifier
-    in_features = classifier[1].in_features
-    
+
     model_path = 'models/best_model.pth'
     if not os.path.exists(model_path):
         logger.error(f'Model missing: {model_path}. Run train.py first.')
@@ -59,7 +49,18 @@ def load_model_and_data(cfg_path='configs/config.yaml'):
     checkpoint = torch.load(model_path, map_location=device)
     # Handle checkpoint wrapper format (model_state_dict, best_acc keys)
     checkpoint_state = checkpoint['model_state_dict'] if (isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint) else checkpoint
-    
+
+    checkpoint_classes = checkpoint.get("class_names") if isinstance(checkpoint, dict) else None
+    if checkpoint_classes:
+        class_names = checkpoint_classes
+
+    label_map = {
+        idx: name
+        for idx, name in enumerate(class_names)
+    }
+    num_classes_data = len(label_map)
+    logger.info(f'Loaded data with {num_classes_data} classes.')
+
     # Infer num_classes from checkpoint (includes unknown class)
     num_classes_checkpoint = checkpoint_state.get(
         'classifier.1.weight'
@@ -77,10 +78,11 @@ def load_model_and_data(cfg_path='configs/config.yaml'):
     logger.info(
         f"Dataset classes = {num_classes_data}"
     )
-    # Create model with checkpoint's num_classes (39: 38 known + 1 unknown)
-    model.classifier = nn.Sequential(classifier[0], nn.Linear(in_features, num_classes_checkpoint))
+    arch = checkpoint.get("architecture") if isinstance(checkpoint, dict) else None
+    arch = arch or cfg.get("model", {}).get("architecture", "efficientnet_b2")
+    model = build_model(arch, num_classes_checkpoint, pretrained=False)
     model.load_state_dict(checkpoint_state, strict=True)
-    logger.info(f'Model loaded from {model_path} to {device} with {num_classes_checkpoint} output classes')
+    logger.info(f'Model loaded from {model_path} to {device} as {arch} with {num_classes_checkpoint} output classes')
     
     model.to(device).eval()
     return model, dataloaders, label_map, device, cfg
@@ -104,7 +106,14 @@ def run_evaluation(model, dataloaders, device, label_map):
     
     acc = accuracy_score(y_true, y_pred) * 100
     logger.info('Test Accuracy: %.2f%%', acc)
-    report = classification_report(y_true, y_pred, target_names=target_names, digits=4)
+    report = classification_report(
+        y_true,
+        y_pred,
+        labels=list(range(len(target_names))),
+        target_names=target_names,
+        digits=4,
+        zero_division=0
+    )
     logger.info('\nClassification Report:\n%s', report)
     return acc
 
@@ -178,8 +187,8 @@ def calibration_dataset(dataloaders, cfg, num_calib=100):
     for inputs, _ in test_loader:
         for img in inputs:
             # Denormalize to uint8 [0,255]
-            mean = np.array([0.485, 0.456, 0.406])
-            std = np.array([0.229, 0.224, 0.225])
+            mean = np.array(cfg.get('image', {}).get('mean', [0.485, 0.456, 0.406]))
+            std = np.array(cfg.get('image', {}).get('std', [0.229, 0.224, 0.225]))
             img_np = img.permute(1,2,0).numpy()
             img_np = img_np * std + mean
             img_np = (img_np * 255).astype(np.uint8)
@@ -197,8 +206,10 @@ def convert_to_tflite_int8(onnx_file, dataloaders, cfg):
         logger.info('Converting to INT8 TFLite with PTQ...')
         
         # ONNX -> TF
+        import onnx
         import onnx_tf
-        model_tf = onnx_tf.backend.prepare(onnx_tf.backend.load_model(onnx_file))
+        onnx_model = onnx.load(onnx_file)
+        model_tf = onnx_tf.backend.prepare(onnx_model)
         tf_model_path = 'plant_model_tf'
         model_tf.export_graph(tf_model_path)
         

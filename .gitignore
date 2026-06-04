@@ -1,0 +1,23 @@
+# Python caches and test output
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Runtime logs
+*.log
+*.logcat
+logs/
+
+# Android/Gradle generated output
+.gradle/
+.kotlin/
+build/
+captures/
+
+# Personal editor/workspace state
+.obsidian/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db

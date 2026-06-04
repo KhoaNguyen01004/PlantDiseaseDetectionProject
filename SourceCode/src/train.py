@@ -1,7 +1,7 @@
 import os
-import json
 import yaml
 from pathlib import Path
+from collections import Counter
 
 import torch
 import torch.nn as nn
@@ -9,9 +9,7 @@ import torch.optim as optim
 
 from torch.utils.data import (
     Dataset,
-    DataLoader,
-    random_split,
-    ConcatDataset
+    DataLoader
 )
 
 from torchvision import (
@@ -27,6 +25,7 @@ from torch.optim.lr_scheduler import (
 from tqdm import tqdm
 
 import argparse
+from sklearn.model_selection import train_test_split
 
 from .logging_config import get_logger
 
@@ -137,6 +136,120 @@ def find_dataset_root(base_dir="data"):
     )
 
 
+def get_image_extensions():
+    return {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
+
+
+def get_normalization(config):
+    image_cfg = config.get("image", {}) if config else {}
+    mean = image_cfg.get("mean", [0.485, 0.456, 0.406])
+    std = image_cfg.get("std", [0.229, 0.224, 0.225])
+    return mean, std
+
+
+def configure_reproducibility(seed, deterministic=False):
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+    if deterministic:
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.deterministic = True
+        logger.info("Deterministic training mode enabled")
+
+
+def collect_unknown_samples(unknown_dir, unknown_class_index, unknown_limit, seed):
+    unknown_root = Path(unknown_dir)
+    if not unknown_root.exists():
+        return []
+
+    unknown_images = [
+        (str(path), unknown_class_index)
+        for path in sorted(unknown_root.rglob("*"))
+        if path.is_file() and path.suffix.lower() in get_image_extensions()
+    ]
+
+    generator = torch.Generator().manual_seed(seed)
+    order = torch.randperm(len(unknown_images), generator=generator).tolist()
+    unknown_images = [unknown_images[i] for i in order]
+
+    if unknown_limit > 0:
+        unknown_images = unknown_images[:unknown_limit]
+
+    return unknown_images
+
+
+def split_sample_indices(samples, train_ratio, val_ratio, test_ratio, seed):
+    total_ratio = train_ratio + val_ratio + test_ratio
+    if abs(total_ratio - 1.0) > 1e-6:
+        raise ValueError(
+            f"Data splits must sum to 1.0, got {total_ratio:.6f}"
+        )
+
+    labels = [label for _, label in samples]
+    total_size = len(samples)
+    if total_size == 0:
+        raise ValueError("No training samples were found.")
+
+    train_size = int(total_size * train_ratio)
+    val_size = int(total_size * val_ratio)
+    test_size = total_size - train_size - val_size
+
+    class_counts = Counter(labels)
+    num_classes = len(class_counts)
+    can_stratify = (
+        min(class_counts.values()) >= 3
+        and train_size >= num_classes
+        and val_size >= num_classes
+        and test_size >= num_classes
+    )
+
+    indices = list(range(total_size))
+
+    if not can_stratify:
+        logger.warning(
+            "Dataset is too small for stratified train/val/test split; using seeded random split."
+        )
+        generator = torch.Generator().manual_seed(seed)
+        shuffled = torch.randperm(total_size, generator=generator).tolist()
+        return (
+            shuffled[:train_size],
+            shuffled[train_size: train_size + val_size],
+            shuffled[train_size + val_size:]
+        )
+
+    try:
+        train_indices, temp_indices = train_test_split(
+            indices,
+            train_size=train_size,
+            random_state=seed,
+            stratify=labels
+        )
+
+        temp_labels = [labels[i] for i in temp_indices]
+        val_fraction = val_size / (val_size + test_size)
+
+        val_indices, test_indices = train_test_split(
+            temp_indices,
+            train_size=val_fraction,
+            random_state=seed,
+            stratify=temp_labels
+        )
+
+        return train_indices, val_indices, test_indices
+    except ValueError as exc:
+        logger.warning(
+            f"Stratified split failed ({exc}); using seeded random split."
+        )
+        generator = torch.Generator().manual_seed(seed)
+        shuffled = torch.randperm(total_size, generator=generator).tolist()
+        return (
+            shuffled[:train_size],
+            shuffled[train_size: train_size + val_size],
+            shuffled[train_size + val_size:]
+        )
+
+
 # =========================================================
 # EXPORT LABELS (Deprecated locally - using src.metadata)
 # =========================================================
@@ -155,12 +268,12 @@ def build_dataloaders(
     # Load configuration parameters
     cfg_aug = config.get("augmentation", {}) if config else {}
     cfg_data = config.get("data", {}) if config else {}
+    mean, std = get_normalization(config)
     
     # Set random seeds for reproducibility
     seed = cfg_data.get("seed", 42)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
+    deterministic = config.get("training", {}).get("deterministic", False) if config else False
+    configure_reproducibility(seed, deterministic)
 
     # =====================================================
     # STRONG MOBILE CAMERA AUGMENTATION
@@ -209,16 +322,21 @@ def build_dataloaders(
             p=cfg_aug.get("grayscale_prob", 0.05)
         ),
 
-        transforms.GaussianBlur(
-            kernel_size=3,
-            sigma=(0.1, 2.0)
+        transforms.RandomApply(
+            [
+                transforms.GaussianBlur(
+                    kernel_size=3,
+                    sigma=(0.1, 2.0)
+                )
+            ],
+            p=cfg_aug.get("blur_prob", 0.2)
         ),
 
         transforms.ToTensor(),
 
         transforms.Normalize(
-            mean=[0.485, 0.456, 0.406],
-            std=[0.229, 0.224, 0.225]
+            mean=mean,
+            std=std
         ),
 
         transforms.RandomErasing(
@@ -242,8 +360,8 @@ def build_dataloaders(
         transforms.ToTensor(),
 
         transforms.Normalize(
-            mean=[0.485, 0.456, 0.406],
-            std=[0.229, 0.224, 0.225]
+            mean=mean,
+            std=std
         )
     ])
 
@@ -263,7 +381,7 @@ def build_dataloaders(
     # UNKNOWN DATASET
     # =====================================================
 
-    unknown_dir = "data/unknown"
+    unknown_dir = cfg_data.get("unknown_data_dir", "data/unknown")
 
     if os.path.exists(unknown_dir):
         logger.info("Unknown dataset detected")
@@ -271,16 +389,13 @@ def build_dataloaders(
         unknown_class_index = len(class_names)
         class_names.append("Unknown")
 
-        unknown_images = []
-
-        for file in os.listdir(unknown_dir):
-            path = os.path.join(unknown_dir, file)
-            if Path(file).suffix.lower() in [".jpg", ".jpeg", ".png"]:
-                unknown_images.append((path, unknown_class_index))
-
-        unknown_limit = config.get("data", {}).get("unknown_limit", 6000)
-        if unknown_limit > 0:
-            unknown_images = unknown_images[:unknown_limit]
+        unknown_limit = cfg_data.get("unknown_limit", 0)
+        unknown_images = collect_unknown_samples(
+            unknown_dir,
+            unknown_class_index,
+            unknown_limit,
+            seed
+        )
         logger.info(f"Using {len(unknown_images)} unknown images")
         samples.extend(unknown_images)
     else:
@@ -309,22 +424,17 @@ def build_dataloaders(
     # SPLIT
     # =====================================================
 
-    total_size = len(samples)
-
     train_ratio = cfg_data.get("train_split", 0.8)
     val_ratio = cfg_data.get("val_split", 0.1)
     test_ratio = cfg_data.get("test_split", 0.1)
 
-    train_size = int(total_size * train_ratio)
-    val_size = int(total_size * val_ratio)
-    test_size = total_size - train_size - val_size
-
-    generator = torch.Generator().manual_seed(seed)
-    indices = torch.randperm(total_size, generator=generator).tolist()
-
-    train_indices = indices[:train_size]
-    val_indices = indices[train_size: train_size + val_size]
-    test_indices = indices[train_size + val_size:]
+    train_indices, val_indices, test_indices = split_sample_indices(
+        samples,
+        train_ratio,
+        val_ratio,
+        test_ratio,
+        seed
+    )
 
     train_dataset = ImagePathDataset(
         [samples[i] for i in train_indices],
@@ -343,31 +453,94 @@ def build_dataloaders(
     # DATALOADERS
     # =====================================================
 
+    num_workers = cfg_data.get("num_workers", 0)
+    pin_memory = torch.cuda.is_available()
+    loader_generator = torch.Generator().manual_seed(seed)
+
+    def seed_worker(worker_id):
+        worker_seed = seed + worker_id
+        torch.manual_seed(worker_seed)
+
     train_loader = DataLoader(
         train_dataset,
         batch_size=batch_size,
         shuffle=True,
-        num_workers=0,
-        pin_memory=True
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+        persistent_workers=num_workers > 0,
+        worker_init_fn=seed_worker if num_workers > 0 else None,
+        generator=loader_generator
     )
 
     val_loader = DataLoader(
         val_dataset,
         batch_size=batch_size,
         shuffle=False,
-        num_workers=0,
-        pin_memory=True
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+        persistent_workers=num_workers > 0,
+        worker_init_fn=seed_worker if num_workers > 0 else None
     )
 
     test_loader = DataLoader(
         test_dataset,
         batch_size=batch_size,
         shuffle=False,
-        num_workers=0,
-        pin_memory=True
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+        persistent_workers=num_workers > 0,
+        worker_init_fn=seed_worker if num_workers > 0 else None
     )
 
     return {"train": train_loader, "val": val_loader, "test": test_loader}, class_names
+
+
+def build_model(arch, num_classes, pretrained=True):
+    if arch == "efficientnet_b0":
+        weights = models.EfficientNet_B0_Weights.IMAGENET1K_V1 if pretrained else None
+        model = models.efficientnet_b0(weights=weights)
+    elif arch == "efficientnet_b2":
+        weights = models.EfficientNet_B2_Weights.IMAGENET1K_V1 if pretrained else None
+        model = models.efficientnet_b2(weights=weights)
+    elif arch == "efficientnet_v2_s":
+        weights = models.EfficientNet_V2_S_Weights.IMAGENET1K_V1 if pretrained else None
+        model = models.efficientnet_v2_s(weights=weights)
+    else:
+        raise ValueError(f"Unsupported model architecture: {arch}")
+
+    in_features = model.classifier[1].in_features
+    model.classifier[1] = nn.Linear(in_features, num_classes)
+    return model
+
+
+def evaluate_model(model, data_loader, criterion):
+    model.eval()
+    total_loss = 0.0
+    correct = 0
+    total = 0
+
+    with torch.no_grad():
+        for images, labels in data_loader:
+            images = images.to(
+                DEVICE,
+                non_blocking=True
+            )
+            labels = labels.to(
+                DEVICE,
+                non_blocking=True
+            )
+
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+
+            total_loss += loss.item()
+            _, predicted = outputs.max(1)
+            total += labels.size(0)
+            correct += predicted.eq(labels).sum().item()
+
+    avg_loss = total_loss / max(len(data_loader), 1)
+    accuracy = 100.0 * correct / max(total, 1)
+    return avg_loss, accuracy
 
 
 # =========================================================
@@ -380,7 +553,8 @@ def train_model(
     val_loader,
     epochs,
     learning_rate,
-    config=None
+    config=None,
+    class_names=None
 ):
     cfg_train = config.get("training", {}) if config else {}
 
@@ -426,6 +600,8 @@ def train_model(
     )
 
     best_acc = 0.0
+    best_metrics = {}
+    history = []
 
     for epoch in range(epochs):
 
@@ -502,65 +678,29 @@ def train_model(
         # VALIDATION
         # =================================================
 
-        model.eval()
-
-        val_correct = 0
-
-        val_total = 0
-
-        val_loss = 0.0
-
-        with torch.no_grad():
-
-            for images, labels in val_loader:
-
-                images = images.to(
-                    DEVICE,
-                    non_blocking=True
-                )
-
-                labels = labels.to(
-                    DEVICE,
-                    non_blocking=True
-                )
-
-                outputs = model(images)
-
-                loss = criterion(
-                    outputs,
-                    labels
-                )
-
-                val_loss += loss.item()
-
-                _, predicted = outputs.max(1)
-
-                val_total += labels.size(0)
-
-                val_correct += (
-                    predicted
-                    .eq(labels)
-                    .sum()
-                    .item()
-                )
-
         train_acc = (
             100.0
             * train_correct
             / train_total
         )
 
-        val_acc = (
-            100.0
-            * val_correct
-            / val_total
-        )
+        val_loss, val_acc = evaluate_model(model, val_loader, criterion)
 
         scheduler.step()
 
+        train_epoch_loss = train_loss / max(len(train_loader), 1)
+        history.append({
+            "epoch": epoch + 1,
+            "train_loss": train_epoch_loss,
+            "train_acc": train_acc,
+            "val_loss": val_loss,
+            "val_acc": val_acc,
+            "learning_rate": optimizer.param_groups[0]["lr"],
+        })
+
         logger.info(
-            f"Epoch {epoch+1} | Train Loss: {train_loss/len(train_loader):.4f} | "
-            f"Train Acc: {train_acc:.2f}% | Val Loss: {val_loss/len(val_loader):.4f} | "
+            f"Epoch {epoch+1} | Train Loss: {train_epoch_loss:.4f} | "
+            f"Train Acc: {train_acc:.2f}% | Val Loss: {val_loss:.4f} | "
             f"Val Acc: {val_acc:.2f}%"
         )
 
@@ -571,6 +711,7 @@ def train_model(
         if val_acc > best_acc:
 
             best_acc = val_acc
+            best_metrics = history[-1]
 
             os.makedirs(
                 "models",
@@ -581,6 +722,13 @@ def train_model(
                 {
                     "model_state_dict": model.state_dict(),
                     "best_acc": best_acc,
+                    "best_epoch": epoch + 1,
+                    "architecture": config.get("model", {}).get("architecture", "efficientnet_b2") if config else "efficientnet_b2",
+                    "num_classes": len(class_names) if class_names else None,
+                    "class_names": class_names,
+                    "config": config,
+                    "history": history,
+                    "metrics": best_metrics,
                 },
                 "models/best_model.pth",
             )
@@ -588,6 +736,7 @@ def train_model(
             logger.info(f"Best model saved (Val Acc: {best_acc:.2f}%)")
 
     logger.info("Training completed")
+    return best_metrics
 
 
 # =========================================================
@@ -688,13 +837,20 @@ def main():
     )
 
     num_classes = len(class_names)
+    configured_num_classes = config.get("model", {}).get("num_classes")
+    if configured_num_classes is not None and configured_num_classes != num_classes:
+        logger.warning(
+            f"Configured num_classes={configured_num_classes}, but dataset provides {num_classes}. "
+            "Using dataset-derived class count."
+        )
 
     logger.info(f"Total classes: {num_classes}")
     logger.info("Classes list available; use DEBUG to view each class")
     for idx, class_name in enumerate(class_names):
         logger.debug(f"{idx}: {class_name}")
 
-    # Use centralized src.metadata module for unified export of labels and metadata
+    # Use centralized src.metadata module for unified export of labels and metadata.
+    # Export before training so labels are available even if training is interrupted.
     from src.metadata import export_metadata_for_model
     label_map = {idx: name for idx, name in enumerate(class_names)}
     export_metadata_for_model(label_map, output_dir=".", config=config)
@@ -706,24 +862,7 @@ def main():
     pretrained = config.get("model", {}).get("pretrained", True)
     
     logger.info(f"Initializing model architecture: {arch}")
-    
-    if arch == "efficientnet_b0":
-        weights = models.EfficientNet_B0_Weights.IMAGENET1K_V1 if pretrained else None
-        model = models.efficientnet_b0(weights=weights)
-        in_features = model.classifier[1].in_features
-        model.classifier[1] = nn.Linear(in_features, num_classes)
-    elif arch == "efficientnet_b2":
-        weights = models.EfficientNet_B2_Weights.IMAGENET1K_V1 if pretrained else None
-        model = models.efficientnet_b2(weights=weights)
-        in_features = model.classifier[1].in_features
-        model.classifier[1] = nn.Linear(in_features, num_classes)
-    elif arch == "efficientnet_v2_s":
-        weights = models.EfficientNet_V2_S_Weights.IMAGENET1K_V1 if pretrained else None
-        model = models.efficientnet_v2_s(weights=weights)
-        in_features = model.classifier[1].in_features
-        model.classifier[1] = nn.Linear(in_features, num_classes)
-    else:
-        raise ValueError(f"Unsupported model architecture: {arch}")
+    model = build_model(arch, num_classes, pretrained)
 
     # FULL FINETUNING
     for param in model.parameters():
@@ -734,14 +873,23 @@ def main():
 
     logger.info("Starting training...")
 
-    train_model(
+    best_metrics = train_model(
         model,
         dataloaders["train"],
         dataloaders["val"],
         epochs=epochs,
         learning_rate=learning_rate,
-        config=config
+        config=config,
+        class_names=class_names
     )
+
+    if best_metrics:
+        export_metadata_for_model(
+            label_map,
+            output_dir=".",
+            config=config,
+            metrics=best_metrics
+        )
 
 
 if __name__ == "__main__":

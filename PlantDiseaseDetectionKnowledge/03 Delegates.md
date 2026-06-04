@@ -1,23 +1,38 @@
-# Entity: Delegates (GPU/XNNPACK)
+# Runtime Delegates
 
-**Source:** `SourceCode/src/inference.py` (function `create_delegates`)
+This note separates configured delegate options from the current Android runtime.
 
-## Purpose
-Try to accelerate TFLite inference using experimental delegates.
+---
 
-## Current logic summary
-- attempt to load GPU delegate via `libgpu_delegate.so`
-- always load XNNPACK delegate via `libxnnpack.so`
+## Android
 
-## Problems
-- Hardcoded `.so` filenames break portability (Windows dev machines typically won’t have these)
-- Delegate load failures may crash or silently degrade depending on runtime
+The current app uses PyTorch Mobile:
 
-## Best practice
-- Only load delegates when the shared library exists in an expected location
-- Wrap each delegate attempt independently and continue if unavailable
-- Consider a `--no-delegates` CLI flag for reproducibility
+```text
+org.pytorch:pytorch_android
+org.pytorch:pytorch_android_torchvision
+```
 
-## Links
-- [[01 Inference_TFLite]]
+TFLite delegate settings in `configs/config.yaml` apply to Python/TFLite experimentation, not the current Android app.
 
+---
+
+## TFLite
+
+Config includes:
+
+```yaml
+inference:
+  use_gpu_delegate: true
+  use_xnnpack_delegate: true
+```
+
+Actual delegate behavior must be measured when using TFLite.
+
+Placeholders:
+
+```text
+XNNPACK result: {{XNNPACK_RESULT}}
+GPU delegate result: {{GPU_DELEGATE_RESULT}}
+PyTorch Mobile latency: {{PYTORCH_MOBILE_LATENCY}}
+```
