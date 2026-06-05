@@ -35,4 +35,13 @@ plant_model_tflite_float32/
 plant_model_tflite_int8/
 ```
 
+Real-world fine-tuning and evaluation use:
+
+```text
+SourceCode/finetune_new_plant_dataset.py
+SourceCode/data/NewPLantDataset_preprocessed/split_seed*_val*_test*/
+SourceCode/models/best_model_finetuned.pth
+SourceCode/reports/new_dataset_evaluation/
+```
+
 Runtime metrics must be measured and recorded as placeholders until then.

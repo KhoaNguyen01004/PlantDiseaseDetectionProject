@@ -79,12 +79,57 @@ Do not use historical results unless they were produced by this exact run.
 
 ---
 
-## 4. Evaluation And Export Validation
+## 4. In-The-Wild Fine-Tuning Validation
+
+Run from `SourceCode/`:
+
+```bash
+python finetune_new_plant_dataset.py --dry-run
+```
+
+Expected artifacts:
+
+```text
+data/NewPLantDataset_preprocessed/split_seed*_val*_test*/
+data/NewPLantDataset_preprocessed/split_seed*_val*_test*/train_manifest.csv
+data/NewPLantDataset_preprocessed/split_seed*_val*_test*/val_manifest.csv
+data/NewPLantDataset_preprocessed/split_seed*_val*_test*/test_manifest.csv
+```
+
+Manual checks:
+
+- Manifest leakage check passes.
+- Duplicate source hashes are grouped into the same split.
+- `train/`, `val/`, and `test/` all contain images.
+- Training uses only the new-domain `train/` split plus historical replay.
+- Model selection uses new-domain validation macro-F1, not hybrid validation accuracy.
+
+Full fine-tune command:
+
+```bash
+python finetune_new_plant_dataset.py --skip-preprocess --epochs 8 --head-epochs 2 --head-lr 1e-3 --full-lr 5e-6
+```
+
+Record:
+
+```text
+Split root: {{NEW_SPLIT_ROOT}}
+Train manifest rows: {{NEW_TRAIN_MANIFEST_ROWS}}
+Val manifest rows: {{NEW_VAL_MANIFEST_ROWS}}
+Test manifest rows: {{NEW_TEST_MANIFEST_ROWS}}
+Best new validation macro F1: {{BEST_NEW_VAL_MACRO_F1}}
+Best new validation accuracy: {{BEST_NEW_VAL_ACCURACY}}
+Fine-tuned checkpoint: {{FINE_TUNED_CHECKPOINT_PATH}}
+```
+
+---
+
+## 5. Evaluation And Export Validation
 
 Run:
 
 ```bash
-python -m src.evaluate_and_convert
+python -m src.evaluate_and_convert --skip-preprocess
 ```
 
 Expected artifacts may include:
@@ -94,6 +139,11 @@ plant_model.onnx
 plant_model.onnx.data
 plant_model_tflite_float32/
 plant_model_tflite_int8/
+reports/new_dataset_evaluation/classification_report.txt
+reports/new_dataset_evaluation/classification_report.json
+reports/new_dataset_evaluation/confusion_matrix.csv
+reports/new_dataset_evaluation/worst_recall_classes.csv
+reports/new_dataset_evaluation/summary.json
 ```
 
 Record:
@@ -102,6 +152,7 @@ Record:
 Test accuracy: {{TEST_ACCURACY}}
 Macro F1: {{MACRO_F1}}
 Weighted F1: {{WEIGHTED_F1}}
+Top-3 accuracy: {{TOP3_ACCURACY}}
 ONNX export result: {{ONNX_EXPORT_RESULT}}
 TFLite float32 export result: {{TFLITE_FLOAT32_EXPORT_RESULT}}
 TFLite int8 export result: {{TFLITE_INT8_EXPORT_RESULT}}
@@ -110,12 +161,13 @@ TFLite int8 export result: {{TFLITE_INT8_EXPORT_RESULT}}
 Notes:
 
 - ONNX and TFLite files are generated artifacts.
-- They can be removed if `models/best_model.pth` is kept.
+- They can be removed if the checkpoint used to create them is kept.
 - The Android app currently uses TorchScript, not these TFLite artifacts.
+- Final model quality should be reported from the locked new-domain `test` split, not the hybrid validation split.
 
 ---
 
-## 5. TorchScript Android Asset Validation
+## 6. TorchScript Android Asset Validation
 
 Android uses:
 
@@ -136,7 +188,7 @@ Labels hash: {{ANDROID_LABELS_HASH}}
 
 ---
 
-## 6. Android Build Validation
+## 7. Android Build Validation
 
 Run from `agrilens/`:
 
@@ -154,7 +206,7 @@ APK path: {{ANDROID_DEBUG_APK_PATH}}
 
 ---
 
-## 7. Android Runtime Validation
+## 8. Android Runtime Validation
 
 Manual test checklist:
 
@@ -182,7 +234,7 @@ Vietnamese UI review result: {{VIETNAMESE_UI_REVIEW_RESULT}}
 
 ---
 
-## 8. Performance Placeholders
+## 9. Performance Placeholders
 
 Fill only after measuring:
 
@@ -197,7 +249,7 @@ Model file size: {{MODEL_FILE_SIZE}}
 
 ---
 
-## 9. Cleanup Validation
+## 10. Cleanup Validation
 
 Safe-to-remove generated artifacts when not needed:
 
@@ -207,12 +259,14 @@ SourceCode/plant_model.onnx.data
 SourceCode/plant_model.pt
 SourceCode/plant_model_tflite_float32/
 SourceCode/plant_model_tflite_int8/
+SourceCode/reports/new_dataset_evaluation/
 ```
 
 Keep:
 
 ```text
 SourceCode/models/best_model.pth
+SourceCode/models/best_model_finetuned*.pth
 SourceCode/labels.txt
 SourceCode/labels.json
 SourceCode/metadata.json

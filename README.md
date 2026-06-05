@@ -63,7 +63,15 @@ The Python export pipeline can also generate ONNX and TFLite artifacts for exper
 └── report.md
 ```
 
-Generated export files may appear in `SourceCode/`, such as `plant_model.onnx`, `plant_model.onnx.data`, `plant_model.pt`, and `plant_model_tflite_*` folders. These are reproducible artifacts if `SourceCode/models/best_model.pth` is preserved.
+Generated export files may appear in `SourceCode/`, such as `plant_model.onnx`, `plant_model.onnx.data`, `plant_model.pt`, and `plant_model_tflite_*` folders. These are reproducible artifacts if the selected checkpoint is preserved. For the current real-world app deployment, use the fine-tuned checkpoint.
+
+Real-world fine-tuning may also create audited split folders and reports:
+
+```text
+SourceCode/data/NewPLantDataset_preprocessed/split_seed*_val*_test*/
+SourceCode/reports/new_dataset_evaluation/
+SourceCode/models/best_model_finetuned.pth
+```
 
 ---
 
@@ -73,6 +81,8 @@ Keep:
 
 ```text
 SourceCode/models/best_model.pth
+SourceCode/models/best_model_finetuned.pth
+SourceCode/models/best_model_finetuned*.pth
 SourceCode/labels.txt
 SourceCode/labels.json
 SourceCode/metadata.json
@@ -117,6 +127,14 @@ The current training flow is documented in detail in:
 SourceCode/TRAINING_PIPELINE.md
 ```
 
+For in-the-wild domain adaptation, run from `SourceCode/`:
+
+```bash
+python finetune_new_plant_dataset.py --skip-preprocess --epochs 8 --head-epochs 2 --head-lr 1e-3 --full-lr 5e-6
+```
+
+This fine-tune path preserves the 39-class mapping, uses manifest-audited `train/val/test` splits for `data/NewPLantDataset/color/`, trains with historical replay, and selects the checkpoint by new-domain validation macro-F1.
+
 ---
 
 ## Evaluation And Export
@@ -127,12 +145,15 @@ Run from `SourceCode/`:
 python -m src.evaluate_and_convert
 ```
 
+The current evaluator targets `models/best_model_finetuned.pth` and the audited new-domain `test` split by default. Use `--skip-preprocess` to reuse an existing manifest split.
+
 Expected generated artifacts:
 
 ```text
 plant_model.onnx
 plant_model_tflite_float32/
 plant_model_tflite_int8/
+reports/new_dataset_evaluation/
 ```
 
 TorchScript export for Android is produced separately and copied to:
@@ -179,6 +200,8 @@ Fill these after running the current model and app benchmarks:
 Test accuracy: {{TEST_ACCURACY}}
 Macro F1: {{MACRO_F1}}
 Weighted F1: {{WEIGHTED_F1}}
+Top-3 accuracy: {{TOP3_ACCURACY}}
+Evaluation report directory: {{EVALUATION_REPORT_DIR}}
 TorchScript model size: {{TORCHSCRIPT_MODEL_SIZE}}
 ONNX model size: {{ONNX_MODEL_SIZE}}
 TFLite model size: {{TFLITE_MODEL_SIZE}}

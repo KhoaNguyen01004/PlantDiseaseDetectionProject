@@ -11,6 +11,7 @@ Runtime-dependent values are not hardcoded in this documentation. Fill placehold
 ```text
 src/train.py                 Train and save the best PyTorch checkpoint
 src/evaluate_and_convert.py  Evaluate checkpoint and export ONNX/TFLite artifacts
+finetune_new_plant_dataset.py Fine-tune the 39-class checkpoint on audited in-the-wild splits
 src/inference.py             Run TFLite inference from Python
 src/metadata.py              Export metadata.json, labels.json, labels.txt
 src/gradcam.py               Generate Grad-CAM visualizations
@@ -70,6 +71,27 @@ Primary checkpoint:
 models/best_model.pth
 ```
 
+Real-world fine-tuning:
+
+```bash
+python finetune_new_plant_dataset.py --skip-preprocess --epochs 8 --head-epochs 2 --head-lr 1e-3 --full-lr 5e-6
+```
+
+Fine-tuning creates or reuses:
+
+```text
+data/NewPLantDataset_preprocessed/split_seed*_val*_test*/
+  train/
+  val/
+  test/
+  train_manifest.csv
+  val_manifest.csv
+  test_manifest.csv
+models/best_model_finetuned.pth
+```
+
+The manifests include source SHA-256 values and are checked for split leakage. Fine-tuning trains on the new `train` split plus historical replay and saves the best checkpoint by new-domain validation macro-F1.
+
 The checkpoint stores:
 
 - model weights
@@ -92,6 +114,8 @@ Run:
 python -m src.evaluate_and_convert
 ```
 
+By default this evaluates `models/best_model_finetuned.pth` on the audited new-domain `test` split. Use `--skip-preprocess` to reuse an existing split.
+
 Generated artifacts can include:
 
 ```text
@@ -99,9 +123,10 @@ plant_model.onnx
 plant_model.onnx.data
 plant_model_tflite_float32/
 plant_model_tflite_int8/
+reports/new_dataset_evaluation/
 ```
 
-These are generated deployment artifacts. They can be regenerated from `models/best_model.pth`.
+These are generated deployment artifacts. They can be regenerated from the selected checkpoint. For the current real-world app deployment, export from the fine-tuned checkpoint.
 
 ---
 
@@ -114,7 +139,13 @@ The Android app currently uses PyTorch Mobile/TorchScript:
 ../agrilens/app/src/main/assets/labels.txt
 ```
 
-If you export a new TorchScript model, copy the model and matching labels together. Do not update one without the other.
+To export the current fine-tuned TorchScript model directly into the Android asset:
+
+```bash
+python export_torchscript.py --export-path ../agrilens/app/src/main/assets/plant_model.pt
+```
+
+Keep the model and matching labels together. Do not update one without the other.
 
 ---
 
@@ -140,6 +171,8 @@ Record measured values here after running evaluation:
 Test accuracy: {{TEST_ACCURACY}}
 Macro F1: {{MACRO_F1}}
 Weighted F1: {{WEIGHTED_F1}}
+Top-3 accuracy: {{TOP3_ACCURACY}}
+Evaluation report directory: {{EVALUATION_REPORT_DIR}}
 Best validation accuracy: {{BEST_VAL_ACCURACY}}
 Best epoch: {{BEST_EPOCH}}
 ONNX model size: {{ONNX_MODEL_SIZE}}

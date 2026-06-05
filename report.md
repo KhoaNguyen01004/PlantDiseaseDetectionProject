@@ -30,6 +30,8 @@ Image dataset
   -> preprocessing and augmentation
   -> EfficientNet training
   -> best_model.pth
+  -> staged fine-tuning on audited in-the-wild train/val/test split
+  -> best_model_finetuned.pth
   -> metadata and labels
   -> export artifacts
   -> Android model asset
@@ -60,6 +62,18 @@ Checkpoint: SourceCode/models/best_model.pth
 ```
 
 The training pipeline now stores model architecture, class names, config, history, and metrics in the checkpoint.
+
+The in-the-wild fine-tuning pipeline uses:
+
+```text
+Script: SourceCode/finetune_new_plant_dataset.py
+Split artifacts: SourceCode/data/NewPLantDataset_preprocessed/split_seed*_val*_test*/
+Manifests: train_manifest.csv, val_manifest.csv, test_manifest.csv
+Selection metric: new-domain validation macro F1
+Fine-tuned checkpoint: SourceCode/models/best_model_finetuned.pth
+```
+
+The held-out test split should be used only for final reporting. Hybrid validation accuracy should not be presented as proof of field generalization.
 
 ---
 
@@ -94,10 +108,13 @@ Dataset version/hash: {{DATASET_VERSION_OR_HASH}}
 Class count: {{CLASS_COUNT}}
 Training date: {{TRAINING_DATE}}
 Best validation accuracy: {{BEST_VAL_ACCURACY}}
+Best new validation macro F1: {{BEST_NEW_VAL_MACRO_F1}}
 Test accuracy: {{TEST_ACCURACY}}
+Top-3 accuracy: {{TOP3_ACCURACY}}
 Macro F1: {{MACRO_F1}}
 Weighted F1: {{WEIGHTED_F1}}
 Confusion matrix path: {{CONFUSION_MATRIX_PATH}}
+Worst-recall class report path: {{WORST_RECALL_CLASSES_PATH}}
 ```
 
 Android benchmark placeholders:
@@ -119,6 +136,7 @@ Battery impact: {{BATTERY_IMPACT}}
 - Unknown detection depends on unknown/background training data.
 - Treatment guidance requires domain review before practical use.
 - Lighting, blur, occlusion, and background clutter may affect predictions.
+- Sparse per-class test support can make individual class metrics volatile.
 - Android model and labels must stay synchronized.
 
 ---
@@ -126,7 +144,8 @@ Battery impact: {{BATTERY_IMPACT}}
 ## 8. Future Work
 
 - Add measured evaluation results.
-- Add real field validation images.
+- Add more balanced real field validation and test images, especially for low-support classes.
+- Add real unknown/background field images to evaluate false-positive protection.
 - Review Vietnamese agricultural terminology with a domain speaker.
 - Decide whether to keep PyTorch Mobile or migrate Android inference to TFLite.
 - Add automated Android runtime tests where practical.

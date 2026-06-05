@@ -1,0 +1,31 @@
+class_name,precision,recall,f1-score,support
+Apple___healthy,0.0,0.0,0.0,1
+Corn_(maize)___healthy,0.0,0.0,0.0,1
+"Pepper,_bell___healthy",0.0,0.0,0.0,2
+Tomato___Bacterial_spot,0.0,0.0,0.0,2
+Tomato___Early_blight,0.0,0.0,0.0,2
+Tomato___Spider_mites Two-spotted_spider_mite,0.0,0.0,0.0,2
+Tomato___Target_Spot,0.0,0.0,0.0,2
+Tomato___Tomato_mosaic_virus,0.0,0.0,0.0,2
+Cherry_(including_sour)___healthy,0.0,0.0,0.0,7
+Apple___Apple_scab,1.0,0.3125,0.47619047619047616,16
+Tomato___Leaf_Mold,0.5,0.3333333333333333,0.4,3
+Apple___Black_rot,0.5,0.5,0.5,2
+Potato___Early_blight,0.25,0.5,0.3333333333333333,2
+Tomato___Tomato_Yellow_Leaf_Curl_Virus,0.2,0.5,0.2857142857142857,2
+Tomato___healthy,1.0,0.5,0.6666666666666666,2
+Corn_(maize)___Cercospora_leaf_spot Gray_leaf_spot,0.38461538461538464,0.5,0.43478260869565216,10
+Apple___Cedar_apple_rust,0.6363636363636364,0.5,0.56,14
+Corn_(maize)___Common_rust_,0.8461538461538461,0.6111111111111112,0.7096774193548387,18
+Blueberry___healthy,0.5217391304347826,0.631578947368421,0.5714285714285714,19
+Peach___healthy,0.6666666666666666,0.7,0.6829268292682927,20
+Corn_(maize)___Northern_Leaf_Blight,0.8,0.8484848484848485,0.8235294117647058,33
+Peach___Bacterial_spot,1.0,1.0,1.0,2
+"Pepper,_bell___Bacterial_spot",1.0,1.0,1.0,2
+Potato___Late_blight,1.0,1.0,1.0,2
+Raspberry___healthy,1.0,1.0,1.0,2
+Soybean___healthy,1.0,1.0,1.0,2
+Squash___Powdery_mildew,1.0,1.0,1.0,2
+Strawberry___Leaf_scorch,0.6666666666666666,1.0,0.8,2
+Tomato___Late_blight,0.5,1.0,0.6666666666666666,2
+Tomato___Septoria_leaf_spot,0.3333333333333333,1.0,0.5,2

@@ -11,6 +11,7 @@ No runtime performance numbers are asserted in this document. Fill placeholders 
 Included:
 
 - PyTorch training pipeline.
+- Staged in-the-wild fine-tuning pipeline with audited train/validation/test manifests.
 - Config-driven EfficientNet model selection.
 - Metadata and label export.
 - ONNX/TFLite export pipeline for Python/deployment experiments.
@@ -40,6 +41,11 @@ Dataset folders
   -> ONNX / TFLite generated artifacts
 
 best_model.pth
+  -> SourceCode/finetune_new_plant_dataset.py
+  -> SourceCode/models/best_model_finetuned.pth
+  -> new-domain evaluation reports
+
+best_model.pth or best_model_finetuned.pth
   -> TorchScript export
   -> agrilens/app/src/main/assets/plant_model.pt
   -> Android PyTorch Mobile inference
@@ -63,6 +69,7 @@ CameraX frame or user-selected image
 Python:
 
 - `SourceCode/src/train.py`
+- `SourceCode/finetune_new_plant_dataset.py`
 - `SourceCode/src/evaluate_and_convert.py`
 - `SourceCode/src/inference.py`
 - `SourceCode/src/metadata.py`
@@ -96,6 +103,14 @@ Test split: 0.1
 
 These are configuration values, not measured results.
 
+The real-world fine-tune path uses explicit script arguments for the new-domain split. Current defaults are:
+
+```text
+New-domain validation split: 0.15
+New-domain test split: 0.2
+Fine-tune selection metric: new validation macro F1
+```
+
 ---
 
 ## Artifact Policy
@@ -104,6 +119,7 @@ Primary model checkpoint:
 
 ```text
 SourceCode/models/best_model.pth
+SourceCode/models/best_model_finetuned.pth
 ```
 
 Android runtime assets:
@@ -121,6 +137,7 @@ SourceCode/plant_model.onnx.data
 SourceCode/plant_model.pt
 SourceCode/plant_model_tflite_float32/
 SourceCode/plant_model_tflite_int8/
+SourceCode/reports/new_dataset_evaluation/
 ```
 
 ---
@@ -134,6 +151,7 @@ Best validation accuracy: {{BEST_VAL_ACCURACY}}
 Test accuracy: {{TEST_ACCURACY}}
 Macro F1: {{MACRO_F1}}
 Weighted F1: {{WEIGHTED_F1}}
+Top-3 accuracy: {{TOP3_ACCURACY}}
 Android average latency: {{ANDROID_AVG_LATENCY}}
 Android memory usage: {{ANDROID_MEMORY_USAGE}}
 Field test result: {{FIELD_TEST_RESULT}}
@@ -144,6 +162,7 @@ Field test result: {{FIELD_TEST_RESULT}}
 ## Current Risks
 
 - Runtime quality depends on field-photo coverage, not only PlantVillage-style images.
+- Hybrid validation accuracy can overestimate field performance; new-domain validation macro-F1 and locked test metrics should be reported separately.
 - Unknown detection depends on the quality and diversity of unknown/background samples.
 - Android predictions require strict label/model synchronization.
 - TFLite artifacts are not the Android runtime path unless the app is changed to use TFLite.
