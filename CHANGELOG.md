@@ -4,6 +4,32 @@ This changelog summarizes maintained project changes. Runtime results are not re
 
 ---
 
+## 2026-06-05 - Training And Fine-Tuning Stats Summary
+
+### Summary
+
+Added a consolidated Markdown summary of the available baseline, fine-tuning, evaluation, export, and Android deployment stats.
+
+### Changed
+
+- Added `TRAINING_FINETUNE_STATS.md`.
+- Summarized the audited new-domain split counts: train=577, validation=139, test=180.
+- Recorded the baseline EfficientNet-B2 checkpoint metadata and clarified that the old near-100% PlantVillage metric is not real-world app accuracy.
+- Documented the fixed evaluator issue where testing previously used the old PlantVillage dataset.
+- Summarized the 512, 256, and 128 historical replay fine-tuning runs with locked new-domain test metrics.
+- Recorded the current deployment choice as `SourceCode/models/best_model_finetuned256.pth`.
+- Documented current TorchScript/TFLite artifacts and Android debug build status.
+
+### Runtime Results
+
+```text
+Read SourceCode/reports/new_dataset_evaluation/summary.json.
+Confirmed audited split manifest counts: train=577, val=139, test=180.
+Confirmed available checkpoints: best_model.pth, best_model_finetuned128.pth, best_model_finetuned256.pth.
+```
+
+---
+
 ## 2026-06-05 - TorchScript Fine-Tuned Export Default
 
 ### Summary
