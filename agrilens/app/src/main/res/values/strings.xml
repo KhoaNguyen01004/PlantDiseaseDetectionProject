@@ -34,6 +34,8 @@
     <string name="label_result_title">Diagnostic Result</string>
     <string name="permission_camera_rationale">This app requires camera permission to scan plant leaves offline.</string>
     <string name="confidence_format">Confidence: %.2f%%</string>
+    <string name="explanation_top3_prefix">Closest matches: </string>
+    <string name="explanation_waiting">Closest matches will appear after analysis.</string>
     <string name="prediction_format">Diagnosis: %s</string>
     <string name="result_unknown">No confident match</string>
     <string name="result_healthy_format">Healthy: %s</string>

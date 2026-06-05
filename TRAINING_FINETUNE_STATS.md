@@ -228,5 +228,6 @@ The next highest-value improvements are:
 - Add more real-world images for weak and low-support classes.
 - Keep saving experiment-specific checkpoints instead of overwriting.
 - Show top-3 predictions in the app, since top-3 accuracy is much stronger than top-1.
+- Use `GRADCAM_EXPLAINABILITY.md` and `SourceCode/src/gradcam.py` for offline visual explanations of specific model decisions.
 - Re-evaluate only on the locked audited new-domain test split.
 - Continue fine-tuning rather than training from scratch until the new real-world dataset is much larger and more balanced.

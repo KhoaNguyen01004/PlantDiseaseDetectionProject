@@ -16,6 +16,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 public class ImageClassifierHelper {
@@ -50,8 +52,18 @@ public class ImageClassifierHelper {
             0.225f
     };
 
+    public static class Prediction {
+        public final String label;
+        public final float confidence;
+
+        public Prediction(String label, float confidence) {
+            this.label = label;
+            this.confidence = confidence;
+        }
+    }
+
     public interface ClassificationListener {
-        void onClassificationResult(String label, float confidence);
+        void onClassificationResult(String label, float confidence, List<Prediction> topPredictions);
 
         void onClassificationError(String errorMessage);
     }
@@ -161,6 +173,7 @@ public class ImageClassifierHelper {
             float confidence = softmaxConfidence(scores, maxIndex);
 
             String label = labels.get(maxIndex);
+            List<Prediction> topPredictions = topPredictions(scores, 3);
 
             // UNKNOWN LOGIC
             if (confidence < UNKNOWN_THRESHOLD) {
@@ -170,7 +183,8 @@ public class ImageClassifierHelper {
 
             listener.onClassificationResult(
                     label,
-                    confidence);
+                    confidence,
+                    topPredictions);
 
         } catch (Exception e) {
 
@@ -202,6 +216,46 @@ public class ImageClassifierHelper {
         }
 
         return (float) (Math.exp(logits[index] - max) / sum);
+    }
+
+    private List<Prediction> topPredictions(float[] logits, int count) {
+        float max = Float.NEGATIVE_INFINITY;
+
+        for (float value : logits) {
+            if (value > max) {
+                max = value;
+            }
+        }
+
+        float sum = 0f;
+        float[] probabilities = new float[logits.length];
+
+        for (int i = 0; i < logits.length; i++) {
+            probabilities[i] = (float) Math.exp(logits[i] - max);
+            sum += probabilities[i];
+        }
+
+        List<Integer> indices = new ArrayList<>();
+        for (int i = 0; i < logits.length; i++) {
+            indices.add(i);
+        }
+
+        Collections.sort(indices, new Comparator<Integer>() {
+            @Override
+            public int compare(Integer left, Integer right) {
+                return Float.compare(probabilities[right], probabilities[left]);
+            }
+        });
+
+        List<Prediction> predictions = new ArrayList<>();
+        int limit = Math.min(count, indices.size());
+
+        for (int i = 0; i < limit; i++) {
+            int index = indices.get(i);
+            predictions.add(new Prediction(labels.get(index), probabilities[index] / sum));
+        }
+
+        return predictions;
     }
 
     private String assetFilePath(
@@ -254,9 +308,12 @@ public class ImageClassifierHelper {
                 % labels.size();
 
         float confidence = 0.80f;
+        List<Prediction> topPredictions = new ArrayList<>();
+        topPredictions.add(new Prediction(labels.get(index), confidence));
 
         listener.onClassificationResult(
                 labels.get(index),
-                confidence);
+                confidence,
+                topPredictions);
     }
 }

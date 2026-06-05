@@ -27,6 +27,7 @@ SourceCode/plant_model.pt
 SourceCode/plant_model_tflite_float32/
 SourceCode/plant_model_tflite_int8/
 SourceCode/reports/new_dataset_evaluation/
+SourceCode/reports/gradcam/
 ```
 
 Generated files can be removed when not needed if the checkpoint is kept.
@@ -55,3 +56,5 @@ SourceCode/data/NewPLantDataset_preprocessed/split_seed*_val*_test*/
 ```
 
 Those split folders are generated from `SourceCode/data/NewPLantDataset/color/`. Keep their manifests when reporting results because they prove the train/validation/test split and leakage checks.
+
+Grad-CAM outputs under `SourceCode/reports/gradcam/` are generated explanation artifacts and can be regenerated from the checkpoint and source image.

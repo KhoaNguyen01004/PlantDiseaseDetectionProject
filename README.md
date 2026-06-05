@@ -65,6 +65,8 @@ The Python export pipeline can also generate ONNX and TFLite artifacts for exper
 
 Generated export files may appear in `SourceCode/`, such as `plant_model.onnx`, `plant_model.onnx.data`, `plant_model.pt`, and `plant_model_tflite_*` folders. These are reproducible artifacts if the selected checkpoint is preserved. For the current real-world app deployment, use the fine-tuned checkpoint.
 
+Explainability is documented in `GRADCAM_EXPLAINABILITY.md`. True Grad-CAM is available offline through `SourceCode/src/gradcam.py`; the Android app shows top-3 model probabilities as an on-device explanation.
+
 Real-world fine-tuning may also create audited split folders and reports:
 
 ```text

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""Grad-CAM implementation for Plant Disease Detection model (EfficientNet-B2).
+"""Grad-CAM implementation for the EfficientNet-B2 plant disease model.
 
-Generates heatmaps showing which regions of the leaf image contributed most to the prediction.
+Generates heatmaps showing which image regions contributed most to a prediction.
+This is an offline/Python explainability tool; the Android app uses forward-only
+TorchScript inference and does not run true Grad-CAM on device.
 """
 import cv2
 import numpy as np
@@ -10,8 +12,8 @@ import torch.nn as nn
 from torchvision import models
 import argparse
 import json
-import os
-from typing import Tuple, Optional
+from pathlib import Path
+from typing import Optional, Tuple
 import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -33,7 +35,7 @@ class GradCAM:
         
         # Default target layer for EfficientNet-B2 (final conv layer)
         if target_layer is None:
-            target_layer = 'features.8.0'  # Final block of EfficientNet-B2
+            target_layer = 'features.8'  # Final EfficientNet-B2 convolution path
         
         self.target_layer_name = target_layer
         self.target_layer = None
@@ -175,14 +177,14 @@ def preprocess_image(img_path: str, image_size: int = 260) -> Tuple[torch.Tensor
     image_resized = cv2.resize(original_image, (image_size, image_size))
     
     # Normalize
-    mean = np.array([0.485, 0.456, 0.406])
-    std = np.array([0.229, 0.224, 0.225])
+    mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+    std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
     
     image_normalized = image_resized.astype(np.float32) / 255.0
     image_normalized = (image_normalized - mean) / std
     
     # Convert to tensor
-    input_tensor = torch.from_numpy(image_normalized).permute(2, 0, 1).unsqueeze(0)
+    input_tensor = torch.from_numpy(image_normalized).permute(2, 0, 1).unsqueeze(0).float()
     
     return input_tensor, original_image
 
@@ -201,11 +203,11 @@ def load_model(model_path: str, num_classes: int = 39) -> nn.Module:
     
     model = models.efficientnet_b2(weights=None)
     in_features = model.classifier[1].in_features
-    model.classifier = nn.Linear(in_features, num_classes)
+    model.classifier[1] = nn.Linear(in_features, num_classes)
     
     # Load checkpoint
     checkpoint = torch.load(model_path, map_location=device, weights_only=False)
-    if 'model_state_dict' in checkpoint:
+    if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
         model.load_state_dict(checkpoint['model_state_dict'])
     else:
         model.load_state_dict(checkpoint)
@@ -213,7 +215,7 @@ def load_model(model_path: str, num_classes: int = 39) -> nn.Module:
     model = model.to(device)
     model.eval()
     
-    logger.info(f"Model loaded from {model_path} to {device}")
+    logger.info("Model loaded from %s to %s", model_path, device)
     return model, device
 
 
@@ -222,6 +224,50 @@ def load_labels(labels_path: str = 'labels.json') -> dict:
     with open(labels_path, 'r') as f:
         labels = json.load(f)
     return labels
+
+
+def resolve_default_checkpoint(project_root: Path) -> Path:
+    """Return the preferred fine-tuned checkpoint for Grad-CAM."""
+    preferred = project_root / "models" / "best_model_finetuned.pth"
+    if preferred.exists():
+        return preferred
+
+    candidates = sorted(
+        (path for path in (project_root / "models").glob("best_model_finetuned*.pth") if path.is_file()),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    if candidates:
+        selected = candidates[0]
+        logger.info(
+            "Default checkpoint %s was not found; using newest fine-tuned checkpoint: %s",
+            preferred,
+            selected,
+        )
+        return selected
+
+    baseline = project_root / "models" / "best_model.pth"
+    if baseline.exists():
+        logger.warning("No fine-tuned checkpoint found; falling back to baseline checkpoint: %s", baseline)
+        return baseline
+
+    raise FileNotFoundError(f"No model checkpoint found under {project_root / 'models'}")
+
+
+def label_name(labels, index: int) -> str:
+    if isinstance(labels, dict):
+        return labels.get(str(index), labels.get(index, f"class_{index}"))
+    return labels[index]
+
+
+def top_k_predictions(output: torch.Tensor, labels, k: int = 3) -> list[tuple[int, str, float]]:
+    probabilities = torch.nn.functional.softmax(output, dim=1)[0]
+    top_count = min(k, probabilities.numel())
+    confidences, indices = torch.topk(probabilities, top_count)
+    return [
+        (int(index.item()), label_name(labels, int(index.item())), float(conf.item()) * 100.0)
+        for conf, index in zip(confidences, indices)
+    ]
 
 
 def save_visualization(original_image: np.ndarray, heatmap: np.ndarray, 
@@ -259,23 +305,31 @@ def save_visualization(original_image: np.ndarray, heatmap: np.ndarray,
 
 
 def main():
+    project_root = Path(__file__).resolve().parents[1]
+
     parser = argparse.ArgumentParser(description='Grad-CAM for Plant Disease Detection')
     parser.add_argument('--image', required=True, help='Path to input image')
-    parser.add_argument('--model', default='models/best_model.pth', help='Path to model checkpoint')
-    parser.add_argument('--labels', default='labels.json', help='Path to labels file')
-    parser.add_argument('--output', default='gradcam_output.png', help='Output path for visualization')
+    parser.add_argument(
+        '--model',
+        default=None,
+        help='Path to model checkpoint. Defaults to the newest fine-tuned checkpoint.',
+    )
+    parser.add_argument('--labels', default=str(project_root / 'labels.json'), help='Path to labels file')
+    parser.add_argument('--output', default=str(project_root / 'reports' / 'gradcam' / 'gradcam_output.png'), help='Output path for visualization')
     parser.add_argument('--target-class', type=int, default=None, help='Target class index (default: predicted class)')
+    parser.add_argument('--target-layer', default=None, help='Model layer used for Grad-CAM hooks. Default: features.8')
     parser.add_argument('--image-size', type=int, default=260, help='Image size for model input')
     args = parser.parse_args()
+    model_path = args.model or str(resolve_default_checkpoint(project_root))
     
     # Load model
-    model, device = load_model(args.model)
+    model, device = load_model(model_path)
     
     # Load labels
     labels = load_labels(args.labels)
     
     # Create Grad-CAM instance
-    grad_cam = GradCAM(model)
+    grad_cam = GradCAM(model, target_layer=args.target_layer)
     
     # Preprocess image
     input_tensor, original_image = preprocess_image(args.image, args.image_size)
@@ -292,20 +346,27 @@ def main():
         pred_class_idx = probabilities.argmax(dim=1).item()
         confidence = probabilities[0, pred_class_idx].item() * 100
     
-    pred_class_name = labels[str(pred_class_idx)] if isinstance(labels, dict) else labels[pred_class_idx]
+    pred_class_name = label_name(labels, pred_class_idx)
     
     logger.info(f"Prediction: {pred_class_name} (confidence: {confidence:.1f}%)")
+    logger.info("Top-3 predictions:")
+    for class_index, class_name, score in top_k_predictions(output, labels, k=3):
+        logger.info("  %s (%d): %.2f%%", class_name, class_index, score)
     
     # Apply heatmap to original image
     overlay = apply_heatmap_to_image(original_image, heatmap)
     
     # Save visualization
-    save_visualization(original_image, heatmap, overlay, args.output, pred_class_name, confidence)
+    output_path = Path(args.output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    save_visualization(original_image, heatmap, overlay, str(output_path), pred_class_name, confidence)
     
     # Also save individual components
-    cv2.imwrite('original.png', cv2.cvtColor(original_image, cv2.COLOR_RGB2BGR))
-    cv2.imwrite('overlay.png', cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR))
-    logger.info("Individual images saved: original.png, overlay.png")
+    original_path = output_path.with_name(f"{output_path.stem}_original.png")
+    overlay_path = output_path.with_name(f"{output_path.stem}_overlay.png")
+    cv2.imwrite(str(original_path), cv2.cvtColor(original_image, cv2.COLOR_RGB2BGR))
+    cv2.imwrite(str(overlay_path), cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR))
+    logger.info("Individual images saved: %s, %s", original_path, overlay_path)
 
 
 if __name__ == '__main__':

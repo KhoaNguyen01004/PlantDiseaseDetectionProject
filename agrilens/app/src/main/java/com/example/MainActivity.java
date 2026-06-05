@@ -37,6 +37,7 @@ import androidx.core.content.ContextCompat;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.io.File;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -59,6 +60,8 @@ public class MainActivity extends AppCompatActivity {
     private TextView resultText;
 
     private TextView confidenceText;
+
+    private TextView topPredictionsText;
 
     private ProgressBar progressBar;
 
@@ -255,6 +258,9 @@ public class MainActivity extends AppCompatActivity {
         confidenceText =
                 findViewById(R.id.confidenceText);
 
+        topPredictionsText =
+                findViewById(R.id.topPredictionsText);
+
         progressBar =
                 findViewById(R.id.progressBar);
 
@@ -381,12 +387,16 @@ public class MainActivity extends AppCompatActivity {
                         if (bitmap != null) {
                             classifierHelper.classify(bitmap, new ImageClassifierHelper.ClassificationListener() {
                                 @Override
-                                public void onClassificationResult(String label, float confidence) {
+                                public void onClassificationResult(
+                                        String label,
+                                        float confidence,
+                                        List<ImageClassifierHelper.Prediction> topPredictions
+                                ) {
                                     runOnUiThread(() -> {
                                         boolean detected = isKnownLabel(label);
                                         overlayView.setResults(detected);
                                         imagePreview.setImageBitmap(bitmap);
-                                        displayResult(label, confidence, true);
+                                        displayResult(label, confidence, topPredictions, true);
                                         if (detected) {
                                             pauseLiveScanning();
                                         }
@@ -558,7 +568,8 @@ public class MainActivity extends AppCompatActivity {
                             @Override
                             public void onClassificationResult(
                                     String label,
-                                    float confidence
+                                    float confidence,
+                                    List<ImageClassifierHelper.Prediction> topPredictions
                             ) {
 
                                 runOnUiThread(() -> {
@@ -571,6 +582,7 @@ public class MainActivity extends AppCompatActivity {
                                     displayResult(
                                             label,
                                             confidence,
+                                            topPredictions,
                                             false
                                     );
                                     pauseLiveScanning();
@@ -609,6 +621,7 @@ public class MainActivity extends AppCompatActivity {
     private void displayResult(
             String label,
             float confidence,
+            List<ImageClassifierHelper.Prediction> topPredictions,
             boolean isLive
     ) {
 
@@ -667,6 +680,30 @@ public class MainActivity extends AppCompatActivity {
                 Math.round(confidence * 100f)
         );
 
+        topPredictionsText.setText(formatTopPredictions(topPredictions));
+
+    }
+
+    private String formatTopPredictions(List<ImageClassifierHelper.Prediction> topPredictions) {
+
+        if (topPredictions == null || topPredictions.isEmpty()) {
+            return getString(R.string.explanation_waiting);
+        }
+
+        String languageCode = LanguageManager.getLanguage(this);
+        StringBuilder builder = new StringBuilder(getString(R.string.explanation_top3_prefix));
+
+        for (int i = 0; i < topPredictions.size(); i++) {
+            ImageClassifierHelper.Prediction prediction = topPredictions.get(i);
+            if (i > 0) {
+                builder.append("  |  ");
+            }
+            builder.append(DiseaseTreatmentRepository.getDisplayName(prediction.label, languageCode));
+            builder.append(" ");
+            builder.append(String.format(Locale.US, "%.1f%%", prediction.confidence * 100f));
+        }
+
+        return builder.toString();
     }
 
     private boolean isKnownLabel(String label) {
@@ -694,6 +731,7 @@ public class MainActivity extends AppCompatActivity {
         resultText.setText(R.string.result_waiting);
         confidenceText.setText(R.string.confidence_waiting);
         confidenceBar.setProgress(0);
+        topPredictionsText.setText(R.string.explanation_waiting);
         treatmentPanel.setVisibility(View.GONE);
         overlayView.setResults(false);
     }

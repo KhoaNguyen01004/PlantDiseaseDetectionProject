@@ -413,6 +413,16 @@
                 android:progress="0"
                 android:progressDrawable="@drawable/custom_progress_bar" />
 
+            <TextView
+                android:id="@+id/topPredictionsText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:lineSpacingExtra="2dp"
+                android:text="@string/explanation_waiting"
+                android:textColor="@color/text_muted"
+                android:textSize="13sp" />
+
             <LinearLayout
                 android:id="@+id/treatmentPanel"
                 android:layout_width="match_parent"

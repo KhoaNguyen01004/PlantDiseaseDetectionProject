@@ -79,6 +79,32 @@ Do not use historical results unless they were produced by this exact run.
 
 ---
 
+## 4. Explainability Validation
+
+Run from `SourceCode/`:
+
+```bash
+python -m src.gradcam --help
+python -m src.gradcam --image "<path-to-test-image>" --output "reports/gradcam/check.png"
+```
+
+Expected:
+
+```text
+Grad-CAM CLI result: {{GRADCAM_CLI_RESULT}}
+Grad-CAM output path: {{GRADCAM_OUTPUT_PATH}}
+Grad-CAM checkpoint used: {{GRADCAM_CHECKPOINT_USED}}
+```
+
+Manual checks:
+
+- Grad-CAM loads the same EfficientNet-B2 classifier structure as training.
+- Grad-CAM uses the fine-tuned checkpoint when available.
+- The heatmap overlays the original image and is not blank.
+- Android shows top-3 closest matches below confidence after inference.
+
+---
+
 ## 4. In-The-Wild Fine-Tuning Validation
 
 Run from `SourceCode/`:

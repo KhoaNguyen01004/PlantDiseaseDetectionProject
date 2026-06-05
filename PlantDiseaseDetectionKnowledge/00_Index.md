@@ -13,6 +13,7 @@ These notes summarize the current technical design. They do not contain measured
 - `05 Data_Split_Sampler.md`: data splitting and sampling.
 - `06 Augmentation_and_Masking.md`: augmentation and masking context.
 - `07 Preprocess_Export_Confusion.md`: common confusion between preprocessing/export paths.
+- `../GRADCAM_EXPLAINABILITY.md`: offline Grad-CAM and Android top-3 explanation behavior.
 - `PlantDiseaseDetection_CodeReview.md`: current review notes and risks.
 
 ---
@@ -45,3 +46,5 @@ SourceCode/reports/new_dataset_evaluation/
 ```
 
 Runtime metrics must be measured and recorded as placeholders until then.
+
+Explainability uses offline Python Grad-CAM for heatmaps and Android top-3 probabilities for on-device user feedback.

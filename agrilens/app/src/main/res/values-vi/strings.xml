@@ -34,6 +34,8 @@
     <string name="label_result_title">Kết quả</string>
     <string name="permission_camera_rationale">Ứng dụng cần quyền camera để kiểm tra lá cây.</string>
     <string name="confidence_format">Độ tin cậy: %.2f%%</string>
+    <string name="explanation_top3_prefix">Gan dung nhat: </string>
+    <string name="explanation_waiting">Cac ket qua gan nhat se hien sau khi phan tich.</string>
     <string name="prediction_format">Kết quả: %s</string>
     <string name="result_unknown">Chưa nhận ra</string>
     <string name="result_healthy_format">Cây khỏe: %s</string>

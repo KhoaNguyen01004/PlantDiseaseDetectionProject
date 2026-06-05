@@ -4,6 +4,40 @@ This changelog summarizes maintained project changes. Runtime results are not re
 
 ---
 
+## 2026-06-05 - Grad-CAM And App Explainability
+
+### Summary
+
+Fixed the offline Grad-CAM utility and added on-device Android explanation through top-3 model probabilities in the result panel.
+
+### Changed
+
+- Updated `SourceCode/src/gradcam.py`.
+- Fixed EfficientNet-B2 classifier construction to match training and checkpoint loading by replacing `model.classifier[1]` instead of the whole classifier module.
+- Changed Grad-CAM default checkpoint discovery to prefer fine-tuned checkpoints and fall back to the baseline only when no fine-tuned checkpoint exists.
+- Fixed Grad-CAM preprocessing dtype so image tensors are float32 and match model weights.
+- Changed the default Grad-CAM hook layer to `features.8` and added `--target-layer` for layer comparison.
+- Added top-3 prediction extraction to `agrilens/app/src/main/java/com/example/ImageClassifierHelper.java`.
+- Updated `agrilens/app/src/main/java/com/example/MainActivity.java` to display the top-3 closest model matches below the confidence bar.
+- Updated `agrilens/app/src/main/res/layout/activity_main.xml`, `values/strings.xml`, and `values-vi/strings.xml` for the new explanation text.
+- Added `GRADCAM_EXPLAINABILITY.md`.
+- Updated `README.md`, `SourceCode/README.md`, `PROJECT_SUMMARY.md`, `report.md`, `VALIDATION_GUIDE.md`, `TRAINING_FINETUNE_STATS.md`, and relevant `PlantDiseaseDetectionKnowledge/` notes.
+
+### Runtime Results
+
+```text
+Confirmed Grad-CAM was previously only a standalone Python utility and was not used by Android inference.
+AST syntax validation passed for SourceCode/src/gradcam.py.
+Grad-CAM CLI help passed.
+Generated SourceCode/reports/gradcam/apple_scab_check.png from SourceCode/models/best_model_finetuned256.pth.
+Generated SourceCode/reports/gradcam/apple_scab_check_original.png and apple_scab_check_overlay.png.
+Observed the sample Grad-CAM emphasized a background/corner region for a low-confidence misclassification, which is useful evidence that the model can still rely on weak cues.
+Android debug build passed with `./gradlew.bat :app:assembleDebug`.
+Build warnings were limited to existing deprecated system UI API warnings in GuideActivity/MainActivity.
+```
+
+---
+
 ## 2026-06-05 - Training And Fine-Tuning Stats Summary
 
 ### Summary

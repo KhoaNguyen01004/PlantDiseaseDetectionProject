@@ -14,9 +14,11 @@ src/evaluate_and_convert.py  Evaluate checkpoint and export ONNX/TFLite artifact
 finetune_new_plant_dataset.py Fine-tune the 39-class checkpoint on audited in-the-wild splits
 src/inference.py             Run TFLite inference from Python
 src/metadata.py              Export metadata.json, labels.json, labels.txt
-src/gradcam.py               Generate Grad-CAM visualizations
+src/gradcam.py               Generate offline Grad-CAM visualizations from the fine-tuned checkpoint
 src/quality_validator.py     Check image quality before inference
 ```
+
+See `../GRADCAM_EXPLAINABILITY.md` for the distinction between offline Grad-CAM and Android top-3 explanations.
 
 ---
 

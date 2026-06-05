@@ -89,6 +89,7 @@ The Android app supports:
 - English and Vietnamese language setting.
 - Adjustable text size.
 - Offline guide.
+- Top-3 closest model matches in the result panel.
 
 Android runtime assets:
 
@@ -96,6 +97,8 @@ Android runtime assets:
 agrilens/app/src/main/assets/plant_model.pt
 agrilens/app/src/main/assets/labels.txt
 ```
+
+Grad-CAM is available as an offline Python explanation tool through `SourceCode/src/gradcam.py`. The Android app does not run true Grad-CAM on device; it displays top-3 prediction probabilities for user-facing explanation.
 
 ---
 
